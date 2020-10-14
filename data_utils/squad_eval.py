@@ -9,8 +9,10 @@ import argparse
 import json
 import sys
 
+
 def normalize_answer(s):
     """Lower text and remove punctuation, articles and extra whitespace."""
+
     def remove_articles(text):
         return re.sub(r'\b(a|an|the)\b', ' ', text)
 
@@ -51,6 +53,7 @@ def metric_max_over_ground_truths(metric_fn, prediction, ground_truths):
         scores_for_ground_truths.append(score)
     return max(scores_for_ground_truths)
 
+
 def evaluate(dataset, predictions):
     f1 = exact_match = total = 0
     for article in dataset:
@@ -73,13 +76,14 @@ def evaluate(dataset, predictions):
     f1 = 100.0 * f1 / total
     return {'exact_match': exact_match, 'f1': f1}
 
+
 def evaluate_func(human, predictions):
     f1 = exact_match = total = 0
     for uid, ground_truths in human.items():
         total += 1
         if uid not in predictions:
             message = 'Unanswered question ' + uid + \
-                        ' will receive score 0.'
+                      ' will receive score 0.'
             print(message, file=sys.stderr)
             continue
         prediction = predictions[uid]

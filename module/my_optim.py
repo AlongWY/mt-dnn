@@ -5,6 +5,7 @@ import torch
 from torch.nn import Parameter
 from functools import wraps
 
+
 class EMA:
     def __init__(self, gamma, model):
         super(EMA, self).__init__()
@@ -17,12 +18,13 @@ class EMA:
         for name, para in self.model.named_parameters():
             if para.requires_grad:
                 self.shadow[name] = para.clone()
+
     def cuda(self):
         for k, v in self.shadow.items():
             self.shadow[k] = v.cuda()
 
     def update(self):
-        for name,para in self.model.named_parameters():
+        for name, para in self.model.named_parameters():
             if para.requires_grad:
                 self.shadow[name] = (1.0 - self.gamma) * para + self.gamma * self.shadow[name]
 

@@ -8,6 +8,7 @@ from module.san import SANClassifier
 TASK_REGISTRY = {}
 TASK_CLASS_NAMES = set()
 
+
 class MTDNNTask:
     def __init__(self, task_def):
         self._task_def = task_def
@@ -17,14 +18,12 @@ class MTDNNTask:
 
     @staticmethod
     def input_is_valid_sample(sample, max_len):
-         return len(sample['token_id']) <= max_len 
-        
+        return len(sample['token_id']) <= max_len
 
     @staticmethod
     def train_prepare_label(labels):
         raise NotImplementedError()
 
-    
     @staticmethod
     def train_prepare_soft_label(softlabels):
         raise NotImplementedError()
@@ -36,7 +35,7 @@ class MTDNNTask:
         else:
             out_proj = nn.Linear(hidden_size, lab)
         return out_proj
-    
+
     @staticmethod
     def train_forward(sequence_output, pooled_output, premise_mask, hyp_mask, decoder_opt, dropout_layer, task_layer):
         if decoder_opt == 1:
@@ -50,11 +49,11 @@ class MTDNNTask:
             pooled_output = dropout_layer(pooled_output)
             logits = task_layer(pooled_output)
         return logits
-    
+
     @staticmethod
     def test_prepare_label(batch_info, labels):
         batch_info['label'] = labels
-    
+
     @staticmethod
     def test_predict(score):
         raise NotImplementedError()
@@ -88,15 +87,17 @@ def register_task(name):
 
     return register_task_cls
 
+
 def get_task_obj(task_def):
     task_name = task_def.task_type.name
     task_cls = TASK_REGISTRY.get(task_name, None)
     if task_cls is None:
         return None
-    
+
     return task_cls(task_def)
 
-@register_task('Regression')            
+
+@register_task('Regression')
 class RegressionTask(MTDNNTask):
     def __init__(self, task_def):
         super().__init__(task_def)
@@ -119,6 +120,7 @@ class RegressionTask(MTDNNTask):
         predict = np.argmax(score, axis=1).tolist()
         score = score.reshape(-1).tolist()
         return score, predict
+
 
 @register_task('Classification')
 class ClassificationTask(MTDNNTask):

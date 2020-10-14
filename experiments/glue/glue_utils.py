@@ -18,6 +18,7 @@ def load_scitail(file):
             cnt += 1
     return rows
 
+
 def load_snli(file, header=True):
     rows = []
     cnt = 0
@@ -31,11 +32,13 @@ def load_snli(file, header=True):
             if blocks[-1] == '-': continue
             lab = blocks[-1]
             if lab is None:
-                import pdb; pdb.set_trace()
+                import pdb;
+                pdb.set_trace()
             sample = {'uid': blocks[0], 'premise': blocks[7], 'hypothesis': blocks[8], 'label': lab}
             rows.append(sample)
             cnt += 1
     return rows
+
 
 def load_mnli(file, header=True, multi_snli=False, is_train=True):
     rows = []
@@ -52,11 +55,13 @@ def load_mnli(file, header=True, multi_snli=False, is_train=True):
             if is_train:
                 lab = blocks[-1]
             if lab is None:
-                import pdb; pdb.set_trace()
+                import pdb;
+                pdb.set_trace()
             sample = {'uid': blocks[0], 'premise': blocks[8], 'hypothesis': blocks[9], 'label': lab}
             rows.append(sample)
             cnt += 1
     return rows
+
 
 def load_mrpc(file, header=True, is_train=True):
     rows = []
@@ -76,6 +81,7 @@ def load_mrpc(file, header=True, is_train=True):
             cnt += 1
     return rows
 
+
 def load_qnli(file, header=True, is_train=True):
     """QNLI for classification"""
     rows = []
@@ -91,11 +97,13 @@ def load_qnli(file, header=True, is_train=True):
             if is_train:
                 lab = blocks[-1]
             if lab is None:
-                import pdb; pdb.set_trace()
+                import pdb;
+                pdb.set_trace()
             sample = {'uid': blocks[0], 'premise': blocks[1], 'hypothesis': blocks[2], 'label': lab}
             rows.append(sample)
             cnt += 1
     return rows
+
 
 def load_qqp(file, header=True, is_train=True):
     rows = []
@@ -121,13 +129,14 @@ def load_qqp(file, header=True, is_train=True):
             cnt += 1
     return rows
 
+
 def load_rte(file, header=True, is_train=True):
     rows = []
     cnt = 0
     with open(file, encoding="utf8") as f:
         for line in f:
             if header:
-                header =False
+                header = False
                 continue
             blocks = line.strip().split('\t')
             if is_train and len(blocks) < 4: continue
@@ -142,13 +151,14 @@ def load_rte(file, header=True, is_train=True):
             cnt += 1
     return rows
 
+
 def load_wnli(file, header=True, is_train=True):
     rows = []
     cnt = 0
     with open(file, encoding="utf8") as f:
         for line in f:
             if header:
-                header =False
+                header = False
                 continue
             blocks = line.strip().split('\t')
             if is_train and len(blocks) < 4: continue
@@ -162,6 +172,7 @@ def load_wnli(file, header=True, is_train=True):
             rows.append(sample)
             cnt += 1
     return rows
+
 
 def load_diag(file, header=True):
     rows = []
@@ -177,6 +188,7 @@ def load_diag(file, header=True):
             rows.append(sample)
             cnt += 1
     return rows
+
 
 def load_sst(file, header=True, is_train=True):
     rows = []
@@ -199,6 +211,7 @@ def load_sst(file, header=True, is_train=True):
             rows.append(sample)
     return rows
 
+
 def load_cola(file, header=True, is_train=True):
     rows = []
     cnt = 0
@@ -219,6 +232,7 @@ def load_cola(file, header=True, is_train=True):
             cnt += 1
     return rows
 
+
 def load_sts(file, header=True, is_train=True):
     rows = []
     cnt = 0
@@ -232,12 +246,13 @@ def load_sts(file, header=True, is_train=True):
             score = "0.0"
             if is_train:
                 score = blocks[-1]
-                sample = {'uid': cnt, 'premise': blocks[-3],'hypothesis': blocks[-2], 'label': score}
+                sample = {'uid': cnt, 'premise': blocks[-3], 'hypothesis': blocks[-2], 'label': score}
             else:
-                sample = {'uid': cnt, 'premise': blocks[-2],'hypothesis': blocks[-1], 'label': score}
+                sample = {'uid': cnt, 'premise': blocks[-2], 'hypothesis': blocks[-1], 'label': score}
             rows.append(sample)
             cnt += 1
     return rows
+
 
 def load_qnnli(file, header=True, is_train=True):
     """QNLI for ranking"""
@@ -273,7 +288,8 @@ def load_qnnli(file, header=True, is_train=True):
             assert "," not in lab2
             assert "," not in block1[0]
             assert "," not in block2[0]
-            sample = {'uid': cnt, 'ruid': "%s,%s" % (block1[0], block2[0]), 'premise': block1[1], 'hypothesis': [block1[2], block2[2]],
+            sample = {'uid': cnt, 'ruid': "%s,%s" % (block1[0], block2[0]), 'premise': block1[1],
+                      'hypothesis': [block1[2], block2[2]],
                       'label': "%s,%s" % (lab1, lab2)}
             cnt += 1
             rows.append(sample)
@@ -282,7 +298,7 @@ def load_qnnli(file, header=True, is_train=True):
 
 def submit(path, data, label_dict=None):
     header = 'index\tprediction'
-    with open(path ,'w') as writer:
+    with open(path, 'w') as writer:
         predictions, uids = data['predictions'], data['uids']
         writer.write('{}\n'.format(header))
         assert len(predictions) == len(uids)
@@ -295,4 +311,3 @@ def submit(path, data, label_dict=None):
             else:
                 assert type(pred) is int
                 writer.write('{}\t{}\n'.format(uid, label_dict[pred]))
-

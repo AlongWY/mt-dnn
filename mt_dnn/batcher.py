@@ -14,8 +14,9 @@ from experiments.exp_def import TaskDef
 from experiments.mlm.mlm_utils import truncate_seq_pair, load_loose_json
 from experiments.mlm.mlm_utils import create_instances_from_document, create_masked_lm_predictions
 
-UNK_ID=100
-BOS_ID=101
+UNK_ID = 100
+BOS_ID = 101
+
 
 class MultiTaskBatchSampler(BatchSampler):
     def __init__(self, datasets, batch_size, mix_opt, extra_task_ratio):
@@ -30,7 +31,7 @@ class MultiTaskBatchSampler(BatchSampler):
 
     @staticmethod
     def _get_shuffled_index_batches(dataset_len, batch_size):
-        index_batches = [list(range(i, min(i+batch_size, dataset_len))) for i in range(0, dataset_len, batch_size)]
+        index_batches = [list(range(i, min(i + batch_size, dataset_len))) for i in range(0, dataset_len, batch_size)]
         random.shuffle(index_batches)
         return index_batches
 
@@ -72,6 +73,7 @@ class MultiTaskBatchSampler(BatchSampler):
             random.shuffle(all_indices)
         return all_indices
 
+
 class MultiTaskDataset(Dataset):
     def __init__(self, datasets):
         self._datasets = datasets
@@ -90,14 +92,15 @@ class MultiTaskDataset(Dataset):
         task_id, sample_id = idx
         return self._task_id_2_data_set_dic[task_id][sample_id]
 
+
 class SingleTaskDataset(Dataset):
-    def __init__(self, 
+    def __init__(self,
                  path,
                  is_train=True,
                  maxlen=512,
                  factor=1.0,
                  task_id=0,
-                 task_def: TaskDef =None,
+                 task_def: TaskDef = None,
                  bert_model='bert-base-uncased',
                  do_lower_case=True,
                  masked_lm_prob=0.15,
@@ -126,15 +129,18 @@ class SingleTaskDataset(Dataset):
         return self._task_id
 
     @staticmethod
-    def load(path, is_train=True, maxlen=512, factor=1.0, task_def=None, bert_model='bert-base-uncased', do_lower_case=True):
+    def load(path, is_train=True, maxlen=512, factor=1.0, task_def=None, bert_model='bert-base-uncased',
+             do_lower_case=True):
         task_type = task_def.task_type
         assert task_type is not None
 
         if task_type == TaskType.MaskLM:
             def load_mlm_data(path):
-                from pytorch_pretrained_bert.tokenization import BertTokenizer
-                tokenizer = BertTokenizer.from_pretrained(bert_model,
-                                                          do_lower_case=do_lower_case)
+                from transformers import BertTokenizer
+                tokenizer = BertTokenizer.from_pretrained(
+                    bert_model,
+                    do_lower_case=do_lower_case
+                )
                 vocab_words = list(tokenizer.vocab.keys())
                 data = load_loose_json(path)
                 docs = []
@@ -144,6 +150,7 @@ class SingleTaskDataset(Dataset):
                     tokens = [tokenizer.tokenize(para) for para in paras]
                     docs.append(tokens)
                 return docs, tokenizer
+
             return load_mlm_data(path)
 
         with open(path, 'r', encoding='utf-8') as reader:
@@ -157,7 +164,8 @@ class SingleTaskDataset(Dataset):
                     task_obj = tasks.get_task_obj(task_def)
                     if task_obj is not None and not task_obj.input_is_valid_sample(sample, maxlen):
                         continue
-                    if (task_type == TaskType.Ranking) and (len(sample['token_id'][0]) > maxlen or len(sample['token_id'][1]) > maxlen):
+                    if (task_type == TaskType.Ranking) and (
+                            len(sample['token_id'][0]) > maxlen or len(sample['token_id'][1]) > maxlen):
                         continue
                     if (task_type != TaskType.Ranking) and (len(sample['token_id']) > maxlen):
                         continue
@@ -194,11 +202,12 @@ class SingleTaskDataset(Dataset):
             return {"task": {"task_id": self._task_id, "task_def": self._task_def},
                     "sample": sample}
         else:
-            return {"task": {"task_id": self._task_id, "task_def": self._task_def}, 
+            return {"task": {"task_id": self._task_id, "task_def": self._task_def},
                     "sample": self._data[idx]}
 
+
 class Collater:
-    def __init__(self, 
+    def __init__(self,
                  is_train=True,
                  dropout_w=0.005,
                  soft_label=False,
@@ -211,12 +220,13 @@ class Collater:
         self.encoder_type = encoder_type
         self.pairwise_size = 1
         self.max_seq_len = max_seq_len
-        self.do_padding = do_padding 
+        self.do_padding = do_padding
 
     def __random_select__(self, arr):
         if self.dropout_w > 0:
             return [UNK_ID if random.uniform(0, 1) < self.dropout_w else e for e in arr]
-        else: return arr
+        else:
+            return arr
 
     @staticmethod
     def patch_data(gpu, batch_info, batch_data):
@@ -230,7 +240,7 @@ class Collater:
                     batch_data[i] = [sub_part.pin_memory().cuda(non_blocking=True) for sub_part in part]
                 else:
                     raise TypeError("unknown batch data type at %s: %s" % (i, part))
-                    
+
             if "soft_label" in batch_info:
                 batch_info["soft_label"] = batch_info["soft_label"].pin_memory().cuda(non_blocking=True)
 
@@ -247,12 +257,12 @@ class Collater:
                 type_id = sample['type_id'][idx]
                 uid = sample['ruid'][idx]
                 olab = sample['olabel'][idx]
-                newbatch.append({'uid': uid, 'token_id': token_id, 'type_id': type_id, 'label':sample['label'], 'true_label': olab})
+                newbatch.append({'uid': uid, 'token_id': token_id, 'type_id': type_id, 'label': sample['label'],
+                                 'true_label': olab})
         return newbatch
 
     def __if_pair__(self, data_type):
         return data_type in [DataFormat.PremiseAndOneHypothesis, DataFormat.PremiseAndMultiHypothesis]
-
 
     def collate_fn(self, batch):
         task_id = batch[0]["task"]["task_id"]
@@ -277,7 +287,7 @@ class Collater:
         # DataLoader will convert any unknown type objects to dict, 
         # the conversion logic also convert Enum to repr(Enum), which is a string and undesirable
         # If we convert object to dict in advance, DataLoader will do nothing
-        batch_info['task_def'] = task_def.__dict__ 
+        batch_info['task_def'] = task_def.__dict__
         batch_info['pairwise_size'] = self.pairwise_size  # need for ranking task
 
         # add label
@@ -297,7 +307,7 @@ class Collater:
                 batch_data.append((torch.LongTensor(start), torch.LongTensor(end)))
                 # unify to one type of label
                 batch_info['label'] = len(batch_data) - 1
-                #batch_data.extend([torch.LongTensor(start), torch.LongTensor(end)])
+                # batch_data.extend([torch.LongTensor(start), torch.LongTensor(end)])
             elif task_type == TaskType.SeqenceLabeling:
                 batch_size = self._get_batch_size(batch)
                 tok_len = self._get_max_len(batch, key='token_id')

@@ -8,12 +8,13 @@ from functools import wraps
 import torch.nn.functional as F
 from data_utils.task_def import TaskType
 from data_utils.task_def import EncoderModelType
-from .loss import stable_kl 
+from .loss import stable_kl
 
 logger = logging.getLogger(__name__)
 
+
 def generate_noise(embed, mask, epsilon=1e-5):
-    noise = embed.data.new(embed.size()).normal_(0, 1) *  epsilon
+    noise = embed.data.new(embed.size()).normal_(0, 1) * epsilon
     noise.detach()
     noise.requires_grad_()
     return noise
@@ -32,20 +33,19 @@ class SmartPerturbation():
                  loss_map=[],
                  norm_level=0):
         super(SmartPerturbation, self).__init__()
-        self.epsilon = epsilon 
+        self.epsilon = epsilon
         # eta
         self.step_size = step_size
         self.multi_gpu_on = multi_gpu_on
         self.fp16 = fp16
         self.K = k
         # sigma
-        self.noise_var = noise_var 
+        self.noise_var = noise_var
         self.norm_p = norm_p
-        self.encoder_type = encoder_type 
-        self.loss_map = loss_map 
+        self.encoder_type = encoder_type
+        self.loss_map = loss_map
         self.norm_level = norm_level > 0
         assert len(loss_map) > 0
-
 
     def _norm_grad(self, grad, sentence_level=False):
         if self.norm_p == 'l2':
@@ -73,7 +73,8 @@ class SmartPerturbation():
                 task_type=TaskType.Classification,
                 pairwise=1):
         # adv training
-        assert task_type in set([TaskType.Classification, TaskType.Ranking, TaskType.Regression]), 'Donot support {} yet'.format(task_type)
+        assert task_type in set(
+            [TaskType.Classification, TaskType.Ranking, TaskType.Regression]), 'Donot support {} yet'.format(task_type)
         vat_args = [input_ids, token_type_ids, attention_mask, premise_mask, hyp_mask, task_id, 1]
 
         # init delta
@@ -87,7 +88,7 @@ class SmartPerturbation():
             else:
                 if task_type == TaskType.Ranking:
                     adv_logits = adv_logits.view(-1, pairwise)
-                adv_loss = stable_kl(adv_logits, logits.detach(), reduce=False) 
+                adv_loss = stable_kl(adv_logits, logits.detach(), reduce=False)
             delta_grad, = torch.autograd.grad(adv_loss, noise, only_inputs=True)
             norm = delta_grad.norm()
             if (torch.isnan(norm) or torch.isinf(norm)):
@@ -102,4 +103,4 @@ class SmartPerturbation():
             adv_logits = adv_logits.view(-1, pairwise)
         adv_lc = self.loss_map[task_id]
         adv_loss = adv_lc(logits, adv_logits, ignore_index=-1)
-        return adv_loss 
+        return adv_loss

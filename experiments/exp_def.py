@@ -6,14 +6,16 @@ from data_utils.task_def import TaskType, DataFormat, EncoderModelType
 from data_utils.metrics import Metric
 from mt_dnn.loss import LossCriterion
 
+
 class TaskDef(dict):
-    def __init__(self, label_vocab, n_class, data_type, task_type, metric_meta, split_names, enable_san, dropout_p, loss, kd_loss, adv_loss):
+    def __init__(self, label_vocab, n_class, data_type, task_type, metric_meta, split_names, enable_san, dropout_p,
+                 loss, kd_loss, adv_loss):
         """
             :param label_vocab: map string label to numbers.
                 only valid for Classification task or ranking task.
                 For ranking task, better label should have large number
         """
-        super().__init__(**{k: repr(v) for k, v in locals().items()}) # ensure the class is JSON serializable
+        super().__init__(**{k: repr(v) for k, v in locals().items()})  # ensure the class is JSON serializable
         self.label_vocab = label_vocab
         self.n_class = n_class
         self.data_type = data_type
@@ -30,7 +32,6 @@ class TaskDef(dict):
     def from_dict(cls, dict_rep):
         return cls(**dict_rep)
 
-    
 
 class TaskDefs:
     def __init__(self, task_def_path):
@@ -85,7 +86,6 @@ class TaskDefs:
                 adv_loss_map[task] = loss_crt
             else:
                 adv_loss_map[task] = None
-
 
         self._global_map = global_map
         self._n_class_map = n_class_map

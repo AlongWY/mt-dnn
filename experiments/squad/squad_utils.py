@@ -8,14 +8,16 @@ import numpy as np
 import torch
 import math
 from data_utils.task_def import EncoderModelType
-from pytorch_pretrained_bert.tokenization import BertTokenizer
+from transformers import BertTokenizer
 
 LARGE_NEG_NUM = -1.0e5
 tokenizer = None
 
+
 def remove_punc(text):
     exclude = set(string.punctuation)
     return ''.join(ch for ch in text if ch not in exclude)
+
 
 def calc_tokenized_span_range(context, question, answer, answer_start, answer_end, tokenizer, encoderModelType,
                               verbose=False):
@@ -50,6 +52,7 @@ def calc_tokenized_span_range(context, question, answer, answer_start, answer_en
             print(e)
     return span_start, span_end
 
+
 def is_valid_sample(context, answer_start, answer_end, answer):
     valid = True
     constructed = context[answer_start: answer_end]
@@ -64,10 +67,12 @@ def is_valid_sample(context, answer_start, answer_end, answer):
             valid = False
     return valid
 
+
 def is_whitespace(c):
     if c == " " or c == "\t" or c == "\r" or c == "\n" or ord(c) == 0x202F:
         return True
     return False
+
 
 def parse_squad_label(label):
     """
@@ -169,11 +174,13 @@ def doc_split(doc_subwords, doc_stride=180, max_tokens_for_doc=384):
         start_offset += min(length, doc_stride)
     return doc_spans
 
+
 def recompute_span(answer, answer_offset, char_to_word_offset):
     answer_length = len(answer)
     start_position = char_to_word_offset[answer_offset]
     end_position = char_to_word_offset[answer_offset + answer_length - 1]
     return start_position, end_position
+
 
 def is_valid_answer(context, answer_start, answer_end, answer):
     valid = True
@@ -182,6 +189,7 @@ def is_valid_answer(context, answer_start, answer_end, answer):
     if constructed.find(cleaned_answer_text) == -1:
         valid = False
     return valid
+
 
 def token_doc(paragraph_text):
     doc_tokens = []
@@ -199,21 +207,22 @@ def token_doc(paragraph_text):
         char_to_word_offset.append(len(doc_tokens) - 1)
     return doc_tokens, char_to_word_offset
 
+
 class InputFeatures(object):
     def __init__(self,
-                unique_id,
-                example_index,
-                doc_span_index,
-                tokens,
-                token_to_orig_map,
-                token_is_max_context,
-                input_ids,
-                input_mask,
-                segment_ids,
-                start_position=None,
-                end_position=None,
-                is_impossible=None,
-                doc_offset=0):
+                 unique_id,
+                 example_index,
+                 doc_span_index,
+                 tokens,
+                 token_to_orig_map,
+                 token_is_max_context,
+                 input_ids,
+                 input_mask,
+                 segment_ids,
+                 start_position=None,
+                 end_position=None,
+                 is_impossible=None,
+                 doc_offset=0):
         self.unique_id = unique_id
         self.example_index = example_index
         self.doc_span_index = doc_span_index
@@ -232,20 +241,22 @@ class InputFeatures(object):
         return json.dumps({
             'unique_id': self.unique_id,
             'example_index': self.example_index,
-            'doc_span_index':self.doc_span_index,
+            'doc_span_index': self.doc_span_index,
             'tokens': self.tokens,
             'token_to_orig_map': self.token_to_orig_map,
             'token_is_max_context': self.token_is_max_context,
-            'input_ids' : self.input_ids,
+            'input_ids': self.input_ids,
             'input_mask': self.input_mask,
             'segment_ids': self.segment_ids,
             'start_position': self.start_position,
             'end_position': self.end_position,
             'is_impossible': self.is_impossible,
-            'doc_offset' : self.doc_offset
-            })
+            'doc_offset': self.doc_offset
+        })
 
-def mrc_feature(tokenizer, unique_id, example_index, query, doc_tokens, answer_start_adjusted, answer_end_adjusted, is_impossible, max_seq_len, max_query_len, doc_stride, answer_text=None, is_training=True):
+
+def mrc_feature(tokenizer, unique_id, example_index, query, doc_tokens, answer_start_adjusted, answer_end_adjusted,
+                is_impossible, max_seq_len, max_query_len, doc_stride, answer_text=None, is_training=True):
     tok_to_orig_index = []
     orig_to_tok_index = []
     all_doc_tokens = []
@@ -273,9 +284,9 @@ def mrc_feature(tokenizer, unique_id, example_index, query, doc_tokens, answer_s
         (tok_start_position, tok_end_position) = _improve_answer_span(
             all_doc_tokens, tok_start_position, tok_end_position, tokenizer,
             answer_text)
- 
+
     doc_spans = doc_split(all_doc_tokens, doc_stride=doc_stride,
-                                        max_tokens_for_doc=max_tokens_for_doc)
+                          max_tokens_for_doc=max_tokens_for_doc)
     feature_list = []
     for (doc_span_index, doc_span) in enumerate(doc_spans):
         tokens = ["[CLS]"] + query_ids + ["[SEP]"]
@@ -288,7 +299,7 @@ def mrc_feature(tokenizer, unique_id, example_index, query, doc_tokens, answer_s
             token_to_orig_map[len(tokens)] = tok_to_orig_index[split_token_index]
 
             is_max_context = _check_is_max_context(doc_spans, doc_span_index,
-                                                    split_token_index)
+                                                   split_token_index)
             token_is_max_context[len(tokens)] = is_max_context
             tokens.append(all_doc_tokens[split_token_index])
             segment_ids.append(1)
@@ -317,7 +328,7 @@ def mrc_feature(tokenizer, unique_id, example_index, query, doc_tokens, answer_s
                 start_position = 0
                 end_position = 0
             else:
-                #doc_offset = len(query_ids) + 2
+                # doc_offset = len(query_ids) + 2
                 start_position = tok_start_position - doc_start + doc_offset
                 end_position = tok_end_position - doc_start + doc_offset
 
@@ -326,26 +337,28 @@ def mrc_feature(tokenizer, unique_id, example_index, query, doc_tokens, answer_s
             end_position = 0
         is_impossible = True if is_impossible else False
         feature = InputFeatures(
-          unique_id=unique_id_cp,
-          example_index=example_index,
-          doc_span_index=doc_span_index,
-          tokens=tokens,
-          token_to_orig_map=token_to_orig_map,
-          token_is_max_context=token_is_max_context,
-          input_ids=input_ids,
-          input_mask=input_mask,
-          segment_ids=segment_ids,
-          start_position=start_position,
-          end_position=end_position,
-          is_impossible=is_impossible,
-          doc_offset=doc_offset)
+            unique_id=unique_id_cp,
+            example_index=example_index,
+            doc_span_index=doc_span_index,
+            tokens=tokens,
+            token_to_orig_map=token_to_orig_map,
+            token_is_max_context=token_is_max_context,
+            input_ids=input_ids,
+            input_mask=input_mask,
+            segment_ids=segment_ids,
+            start_position=start_position,
+            end_position=end_position,
+            is_impossible=is_impossible,
+            doc_offset=doc_offset)
         feature_list.append(feature)
         unique_id_cp += 1
     return feature_list
 
+
 def gen_gold_name(dir, path, version, suffix='json'):
     fname = '{}-{}.{}'.format(path, version, suffix)
     return os.path.join(dir, fname)
+
 
 def load_squad_label(path):
     rows = {}
@@ -360,6 +373,7 @@ def load_squad_label(path):
                 rows[uid] = label
     return rows
 
+
 def position_encoding(m, threshold=4):
     encoding = np.ones((m, m), dtype=np.float32)
     for i in range(m):
@@ -367,6 +381,7 @@ def position_encoding(m, threshold=4):
             if j - i > threshold:
                 encoding[i][j] = float(1.0 / math.log(j - i + 1))
     return torch.from_numpy(encoding)
+
 
 def get_final_text(pred_text, orig_text, verbose_logging=False, do_lower_case=False):
     """Project the tokenized prediction back to the original text."""
@@ -411,7 +426,7 @@ def get_final_text(pred_text, orig_text, verbose_logging=False, do_lower_case=Fa
     # and `pred_text`, and check if they are the same length. If they are
     # NOT the same length, the heuristic has failed. If they are the same
     # length, we assume the characters are one-to-one aligned.
-    #tokenizer = tokenization.BasicTokenizer(do_lower_case=do_lower_case)
+    # tokenizer = tokenization.BasicTokenizer(do_lower_case=do_lower_case)
     global tokenizer
     if tokenizer is None:
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=do_lower_case)
@@ -456,6 +471,7 @@ def get_final_text(pred_text, orig_text, verbose_logging=False, do_lower_case=Fa
     output_text = orig_text[orig_start_position:(orig_end_position + 1)]
     return output_text
 
+
 def masking_score(mask, batch_meta, start, end, keep_first_token=False):
     """For MRC, e.g., SQuAD
     """
@@ -486,6 +502,7 @@ def masking_score(mask, batch_meta, start, end, keep_first_token=False):
     start = F.softmax(start, 1)
     end = F.softmax(end, 1)
     return start, end
+
 
 def extract_answer(batch_meta, batch_data, start, end, keep_first_token=False, max_len=5, do_lower_case=False):
     doc_len = start.size(1)
@@ -526,12 +543,13 @@ def extract_answer(batch_meta, batch_data, start, end, keep_first_token=False, m
         context = contexts[i].split()
         rs = word_maps[i][str(s_idx)]
         re = word_maps[i][str(e_idx)]
-        raw_answer = ' '.join(context[rs:re+1])
+        raw_answer = ' '.join(context[rs:re + 1])
         # extract final answer
         answer = get_final_text(tok_text, raw_answer, False, do_lower_case=do_lower_case)
         predictions.append(answer)
         answer_scores.append(float(best_score))
     return predictions, answer_scores
+
 
 def select_answers(ids, predictions, scores):
     assert len(ids) == len(predictions)
@@ -549,6 +567,7 @@ def select_answers(ids, predictions, scores):
         final[key] = val[idx][1]
         scores[key] = val[idx][0]
     return final, scores
+
 
 def merge_answers(ids, golds):
     gold_list = {}

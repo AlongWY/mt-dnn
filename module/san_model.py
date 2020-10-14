@@ -3,9 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 import copy
-from pytorch_pretrained_bert.modeling import BertEmbeddings, BertLayerNorm, BertConfig
+from torch.nn import LayerNorm
+from transformers.modeling_bert import BertEmbeddings, BertConfig
 from module.similarity import SelfAttnWrapper
 from module.dropout_wrapper import DropoutWrapper
+
 
 class SanLayer(nn.Module):
     def __init__(self, num_hid, bidirect, dropout, rnn_type):
@@ -16,10 +18,10 @@ class SanLayer(nn.Module):
         assert rnn_type == 'LSTM' or rnn_type == 'GRU'
         rnn_cls = getattr(nn, rnn_type)
         self._rnn = rnn_cls(num_hid, num_hid, 1,
-                bidirectional=bidirect,
-                dropout=dropout,
-                batch_first=True)
-        self._layer_norm = BertLayerNorm(num_hid, eps=1e-12)
+                            bidirectional=bidirect,
+                            dropout=dropout,
+                            batch_first=True)
+        self._layer_norm = LayerNorm(num_hid, eps=1e-12)
         self.rnn_type = rnn_type
         self.num_hid = num_hid
         self.ndirections = 1 + int(bidirect)
@@ -32,7 +34,7 @@ class SanLayer(nn.Module):
                     weight.new(*hid_shape).zero_())
         else:
             return weight.new(*hid_shape).zero_()
-    
+
     def forward(self, x, attention_mask):
         # x: [batch, sequence, in_dim]
         self._rnn.flatten_parameters()
@@ -46,6 +48,7 @@ class SanLayer(nn.Module):
             tmp_output = tmp_output.view(size[0], size[1], self.num_hid, 2).max(-1)[0]
         output = self._layer_norm(x + tmp_output)
         return output
+
 
 class SanEncoder(nn.Module):
     def __init__(self, num_hid, nlayers, bidirect, dropout, rnn_type='LSTM'):
@@ -63,6 +66,7 @@ class SanEncoder(nn.Module):
             all_encoder_layers.append(hidden_states)
         return all_encoder_layers
 
+
 class SanPooler(nn.Module):
     def __init__(self, hidden_size, dropout_p):
         super().__init__()
@@ -78,16 +82,17 @@ class SanPooler(nn.Module):
             hidden_states {FloatTensor} -- shape (batch, seq_len, hidden_size)
             attention_mask {ByteTensor} -- 1 indicates padded token
         """
-        first_token_tensor =  self.self_att(hidden_states, attention_mask)
+        first_token_tensor = self.self_att(hidden_states, attention_mask)
         pooled_output = self.dense(first_token_tensor)
         pooled_output = self.activation(pooled_output)
         return pooled_output
+
 
 class SanModel(nn.Module):
     def __init__(self, config: BertConfig):
         super().__init__()
         self.embeddings = BertEmbeddings(config)
-        self.encoder = SanEncoder(config.hidden_size, config.num_hidden_layers, True, 
+        self.encoder = SanEncoder(config.hidden_size, config.num_hidden_layers, True,
                                   config.hidden_dropout_prob)
         self.pooler = SanPooler(config.hidden_size, config.hidden_dropout_prob)
         self.config = config
@@ -108,9 +113,10 @@ class SanModel(nn.Module):
             attention_mask = torch.ones_like(input_ids)
         if token_type_ids is None:
             token_type_ids = torch.zeros_like(input_ids)
-        
+
         embedding_output = self.embeddings(input_ids, token_type_ids)
-        encoded_layers = self.encoder(embedding_output, attention_mask, output_all_encoded_layers=output_all_encoded_layers)
+        encoded_layers = self.encoder(embedding_output, attention_mask,
+                                      output_all_encoded_layers=output_all_encoded_layers)
         sequence_output = encoded_layers[-1]
         pooled_output = self.pooler(sequence_output, attention_mask == 0)
         if not output_all_encoded_layers:

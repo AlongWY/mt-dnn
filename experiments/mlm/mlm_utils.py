@@ -7,6 +7,7 @@ import collections
 MaskedLmInstance = collections.namedtuple("MaskedLmInstance",
                                           ["index", "label"])
 
+
 def truncate_seq_pair(tokens_a, tokens_b, max_num_tokens, rng):
     """Truncates a pair of sequences to a maximum sequence length."""
     while True:
@@ -24,9 +25,10 @@ def truncate_seq_pair(tokens_a, tokens_b, max_num_tokens, rng):
         else:
             trunc_tokens.pop()
 
+
 class TrainingInstance(object):
     def __init__(self, tokens, segment_ids, masked_lm_positions, masked_lm_labels,
-                             is_random_next):
+                 is_random_next):
         self.tokens = tokens
         self.segment_ids = segment_ids
         self.is_random_next = is_random_next
@@ -36,6 +38,7 @@ class TrainingInstance(object):
     def __repr__(self):
         return self.__str__()
 
+
 def load_loose_json(load_path):
     rows = []
     with open(load_path, 'r', encoding='utf-8') as f:
@@ -44,12 +47,13 @@ def load_loose_json(load_path):
             rows.append(row)
     return rows
 
+
 def create_masked_lm_predictions(tokens,
-                                    masked_lm_prob,
-                                    max_predictions_per_seq,
-                                    vocab_words,
-                                    rng,
-                                    do_whole_word_mask=True):
+                                 masked_lm_prob,
+                                 max_predictions_per_seq,
+                                 vocab_words,
+                                 rng,
+                                 do_whole_word_mask=True):
     cand_indexes = []
     for (i, token) in enumerate(tokens):
         if token == "[CLS]" or token == "[SEP]":
@@ -113,11 +117,12 @@ def create_masked_lm_predictions(tokens,
         masked_lm_labels.append(p.label)
     return (output_tokens, masked_lm_positions, masked_lm_labels)
 
+
 def create_instances_from_document(
         all_documents, document_index, max_seq_length, short_seq_prob,
         masked_lm_prob, max_predictions_per_seq, vocab_words, rng):
     document = all_documents[document_index]
- 
+
     # Account for [CLS], [SEP], [SEP]
     max_num_tokens = max_seq_length - 3
     target_seq_length = max_num_tokens
@@ -138,11 +143,11 @@ def create_instances_from_document(
                 a_end = 1
                 if len(current_chunk) >= 2:
                     a_end = rng.randint(1, len(current_chunk) - 1)
- 
+
                 tokens_a = []
                 for j in range(a_end):
                     tokens_a.extend(current_chunk[j])
- 
+
                 tokens_b = []
                 # Random next
                 is_random_next = False
@@ -167,10 +172,10 @@ def create_instances_from_document(
                     for j in range(a_end, len(current_chunk)):
                         tokens_b.extend(current_chunk[j])
                 truncate_seq_pair(tokens_a, tokens_b, max_num_tokens, rng)
- 
+
                 assert len(tokens_a) >= 1
                 assert len(tokens_b) >= 1
- 
+
                 tokens = []
                 segment_ids = []
                 tokens.append("[CLS]")
@@ -178,10 +183,10 @@ def create_instances_from_document(
                 for token in tokens_a:
                     tokens.append(token)
                     segment_ids.append(0)
- 
+
                 tokens.append("[SEP]")
                 segment_ids.append(0)
- 
+
                 for token in tokens_b:
                     tokens.append(token)
                     segment_ids.append(1)
@@ -189,13 +194,13 @@ def create_instances_from_document(
                 segment_ids.append(1)
                 (tokens, masked_lm_positions,
                  masked_lm_labels) = create_masked_lm_predictions(
-                         tokens, masked_lm_prob, max_predictions_per_seq, vocab_words, rng)
+                    tokens, masked_lm_prob, max_predictions_per_seq, vocab_words, rng)
                 instance = TrainingInstance(
-                        tokens=tokens,
-                        segment_ids=segment_ids,
-                        is_random_next=is_random_next,
-                        masked_lm_positions=masked_lm_positions,
-                        masked_lm_labels=masked_lm_labels)
+                    tokens=tokens,
+                    segment_ids=segment_ids,
+                    is_random_next=is_random_next,
+                    masked_lm_positions=masked_lm_positions,
+                    masked_lm_labels=masked_lm_labels)
                 instances.append(instance)
             current_chunk = []
             current_length = 0

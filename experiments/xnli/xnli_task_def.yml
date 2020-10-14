@@ -3,17 +3,17 @@ xnli:
   dropout_p: 0.2
   enable_san: false
   labels:
-  - contradiction
-  - neutral
-  - entailment
+    - contradiction
+    - neutral
+    - entailment
   metric_meta:
-  - ACC
+    - ACC
   loss: CeCriterion
   kd_loss: MseCriterion
   adv_loss: SymKlCriterion
   n_class: 3
   split_names:
-  - train
-  - dev
-  - test
+    - train
+    - dev
+    - test
   task_type: Classification

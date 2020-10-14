@@ -7,12 +7,15 @@ import shutil
 import subprocess
 
 import re
+
 TRAIN_LOSS_RE = re.compile("train loss\[[\d\.]+\]")
+
 
 def assert_file_equal(output_file, expected_file):
     output = open(output_file).read()
     expected = open(expected_file).read()
     assert output == expected, "file diff: %s != %s" % (output_file, expected_file)
+
 
 def compare_output(output_dir, expected_dir):
     config = open(os.path.join(output_dir, "config.json")).read()
@@ -29,6 +32,7 @@ def compare_output(output_dir, expected_dir):
                       "mnli_mismatched_dev_scores_0.json", "mnli_mismatched_test_scores_0.json"):
         assert_file_equal(os.path.join(output_dir, file_name), os.path.join(expected_dir, file_name))
 
+
 def test_train():
     OUTPUT_DIR = r"run_test/checkpoint"
     EXPECTED_DIR = r"sample_data/checkpoint"
@@ -38,7 +42,8 @@ def test_train():
     os.mkdir("./run_test")
     shutil.copytree("./sample_data", "./run_test/sample_data")
     os.mkdir("./run_test/checkpoint")
-    subprocess.check_output("python train.py --epoch 1 --log_per_updates 1 --data_dir run_test/sample_data/output --output_dir %(OUTPUT_DIR)s 2>&1 > %(OUTPUT_DIR)s/log.txt"
-                                     % {"OUTPUT_DIR": OUTPUT_DIR}, stderr=subprocess.STDOUT, shell=True)
+    subprocess.check_output(
+        "python train.py --epoch 1 --log_per_updates 1 --data_dir run_test/sample_data/output --output_dir %(OUTPUT_DIR)s 2>&1 > %(OUTPUT_DIR)s/log.txt"
+        % {"OUTPUT_DIR": OUTPUT_DIR}, stderr=subprocess.STDOUT, shell=True)
 
     compare_output(OUTPUT_DIR, EXPECTED_DIR)

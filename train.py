@@ -10,8 +10,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader, BatchSampler
 from pretrained_models import *
-from tensorboardX import SummaryWriter
-#from torch.utils.tensorboard import SummaryWriter
+# from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from experiments.exp_def import TaskDefs
 from mt_dnn.inference import eval_model, extract_encoding
 from data_utils.log_wrapper import create_logger
@@ -47,7 +47,7 @@ def model_config(parser):
     parser.add_argument('--mix_opt', type=int, default=0)
     parser.add_argument('--max_seq_len', type=int, default=512)
     parser.add_argument('--init_ratio', type=float, default=1)
-    parser.add_argument('--encoder_type', type=int, default=EncoderModelType.BERT)
+    parser.add_argument('--encoder_type', type=int, default=EncoderModelType.XLM)
     parser.add_argument('--num_hidden_layers', type=int, default=-1)
 
     # BERT pre-training
@@ -71,7 +71,7 @@ def data_config(parser):
     parser.add_argument('--train_datasets', default='mnli')
     parser.add_argument('--test_datasets', default='mnli_matched,mnli_mismatched')
     parser.add_argument('--glue_format_on', action='store_true')
-    parser.add_argument('--mkd-opt', type=int, default=0, 
+    parser.add_argument('--mkd-opt', type=int, default=0,
                         help=">0 to turn on knowledge distillation, requires 'softlabel' column in input data")
     parser.add_argument('--do_padding', action='store_true')
     return parser
@@ -109,7 +109,7 @@ def train_config(parser):
     # scheduler
     parser.add_argument('--have_lr_scheduler', dest='have_lr_scheduler', action='store_false')
     parser.add_argument('--multi_step_lr', type=str, default='10,20,30')
-    #parser.add_argument('--feature_based_on', action='store_true')
+    # parser.add_argument('--feature_based_on', action='store_true')
     parser.add_argument('--lr_gamma', type=float, default=0.5)
     parser.add_argument('--scheduler_type', type=str, default='ms', help='ms/rop/exp')
     parser.add_argument('--output_dir', default='checkpoint')
@@ -117,7 +117,7 @@ def train_config(parser):
                         help='random seed for data shuffling, embedding init, etc.')
     parser.add_argument('--grad_accumulation_step', type=int, default=1)
 
-    #fp 16
+    # fp 16
     parser.add_argument('--fp16', action='store_true',
                         help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit")
     parser.add_argument('--fp16_opt_level', type=str, default='O1',
@@ -163,6 +163,7 @@ logger.info(args.answer_opt)
 task_defs = TaskDefs(args.task_def)
 encoder_type = args.encoder_type
 
+
 def dump(path, data):
     with open(path, 'w') as f:
         json.dump(data, f)
@@ -182,28 +183,31 @@ def main():
     train_datasets = []
     for dataset in args.train_datasets:
         prefix = dataset.split('_')[0]
-        if prefix in tasks: 
+        if prefix in tasks:
             continue
         task_id = len(tasks)
         tasks[prefix] = task_id
         task_def = task_defs.get_task_def(prefix)
         task_def_list.append(task_def)
 
-
         train_path = os.path.join(data_dir, '{}_train.json'.format(dataset))
         logger.info('Loading {} as task {}'.format(train_path, task_id))
-        train_data_set = SingleTaskDataset(train_path, True, maxlen=args.max_seq_len, task_id=task_id, task_def=task_def)
+        train_data_set = SingleTaskDataset(train_path, True, maxlen=args.max_seq_len, task_id=task_id,
+                                           task_def=task_def)
         train_datasets.append(train_data_set)
-    train_collater = Collater(dropout_w=args.dropout_w, encoder_type=encoder_type, soft_label=args.mkd_opt > 0, max_seq_len=args.max_seq_len, do_padding=args.do_padding)
+    train_collater = Collater(dropout_w=args.dropout_w, encoder_type=encoder_type, soft_label=args.mkd_opt > 0,
+                              max_seq_len=args.max_seq_len, do_padding=args.do_padding)
     multi_task_train_dataset = MultiTaskDataset(train_datasets)
     multi_task_batch_sampler = MultiTaskBatchSampler(train_datasets, args.batch_size, args.mix_opt, args.ratio)
-    multi_task_train_data = DataLoader(multi_task_train_dataset, batch_sampler=multi_task_batch_sampler, collate_fn=train_collater.collate_fn, pin_memory=args.cuda)
+    multi_task_train_data = DataLoader(multi_task_train_dataset, batch_sampler=multi_task_batch_sampler,
+                                       collate_fn=train_collater.collate_fn, pin_memory=args.cuda)
 
     opt['task_def_list'] = task_def_list
 
     dev_data_list = []
     test_data_list = []
-    test_collater = Collater(is_train=False, encoder_type=encoder_type, max_seq_len=args.max_seq_len, do_padding=args.do_padding)
+    test_collater = Collater(is_train=False, encoder_type=encoder_type, max_seq_len=args.max_seq_len,
+                             do_padding=args.do_padding)
     for dataset in args.test_datasets:
         prefix = dataset.split('_')[0]
         task_def = task_defs.get_task_def(prefix)
@@ -214,15 +218,19 @@ def main():
         dev_path = os.path.join(data_dir, '{}_dev.json'.format(dataset))
         dev_data = None
         if os.path.exists(dev_path):
-            dev_data_set = SingleTaskDataset(dev_path, False, maxlen=args.max_seq_len, task_id=task_id, task_def=task_def)
-            dev_data = DataLoader(dev_data_set, batch_size=args.batch_size_eval, collate_fn=test_collater.collate_fn, pin_memory=args.cuda)
+            dev_data_set = SingleTaskDataset(dev_path, False, maxlen=args.max_seq_len, task_id=task_id,
+                                             task_def=task_def)
+            dev_data = DataLoader(dev_data_set, batch_size=args.batch_size_eval, collate_fn=test_collater.collate_fn,
+                                  pin_memory=args.cuda)
         dev_data_list.append(dev_data)
 
         test_path = os.path.join(data_dir, '{}_test.json'.format(dataset))
         test_data = None
         if os.path.exists(test_path):
-            test_data_set = SingleTaskDataset(test_path, False, maxlen=args.max_seq_len, task_id=task_id, task_def=task_def)
-            test_data = DataLoader(test_data_set, batch_size=args.batch_size_eval, collate_fn=test_collater.collate_fn, pin_memory=args.cuda)
+            test_data_set = SingleTaskDataset(test_path, False, maxlen=args.max_seq_len, task_id=task_id,
+                                              task_def=task_def)
+            test_data = DataLoader(test_data_set, batch_size=args.batch_size_eval, collate_fn=test_collater.collate_fn,
+                                   pin_memory=args.cuda)
         test_data_list.append(test_data)
 
     logger.info('#' * 20)
@@ -251,7 +259,7 @@ def main():
             arch = arch.replace('_', '-')
             # convert model arch
             from data_utils.roberta_utils import update_roberta_keys
-            from data_utils.roberta_utils import patch_name_dict 
+            from data_utils.roberta_utils import patch_name_dict
             state = update_roberta_keys(state_dict['model'], nlayer=state_dict['args'].encoder_layers)
             state = patch_name_dict(state)
             literal_encoder_type = EncoderModelType(opt['encoder_type']).name.lower()
@@ -294,7 +302,7 @@ def main():
     if args.tensorboard:
         args.tensorboard_logdir = os.path.join(args.output_dir, args.tensorboard_logdir)
         tensorboard = SummaryWriter(log_dir=args.tensorboard_logdir)
-    
+
     if args.encode_mode:
         for idx, dataset in enumerate(args.test_datasets):
             prefix = dataset.split('_')[0]
@@ -312,8 +320,10 @@ def main():
             batch_meta, batch_data = Collater.patch_data(args.cuda, batch_meta, batch_data)
             task_id = batch_meta['task_id']
             model.update(batch_meta, batch_data)
-            if (model.local_updates) % (args.log_per_updates * args.grad_accumulation_step) == 0 or model.local_updates == 1:
-                ramaining_time = str((datetime.now() - start) / (i + 1) * (len(multi_task_train_data) - i - 1)).split('.')[0]
+            if (model.local_updates) % (
+                    args.log_per_updates * args.grad_accumulation_step) == 0 or model.local_updates == 1:
+                ramaining_time = \
+                str((datetime.now() - start) / (i + 1) * (len(multi_task_train_data) - i - 1)).split('.')[0]
                 logger.info('Task [{0:2}] updates[{1:6}] train loss[{2:.5f}] remaining[{3}]'.format(task_id,
                                                                                                     model.updates,
                                                                                                     model.train_loss.avg,
@@ -321,8 +331,8 @@ def main():
                 if args.tensorboard:
                     tensorboard.add_scalar('train/loss', model.train_loss.avg, global_step=model.updates)
 
-
-            if args.save_per_updates_on and ((model.local_updates) % (args.save_per_updates * args.grad_accumulation_step) == 0):
+            if args.save_per_updates_on and (
+                    (model.local_updates) % (args.save_per_updates * args.grad_accumulation_step) == 0):
                 model_file = os.path.join(output_dir, 'model_{}_{}.pt'.format(epoch, model.updates))
                 logger.info('Saving mt-dnn model to {}'.format(model_file))
                 model.save(model_file)
@@ -334,12 +344,12 @@ def main():
             dev_data = dev_data_list[idx]
             if dev_data is not None:
                 with torch.no_grad():
-                    dev_metrics, dev_predictions, scores, golds, dev_ids= eval_model(model,
-                                                                                    dev_data,
-                                                                                    metric_meta=task_def.metric_meta,
-                                                                                    use_cuda=args.cuda,
-                                                                                    label_mapper=label_dict,
-                                                                                    task_type=task_def.task_type)
+                    dev_metrics, dev_predictions, scores, golds, dev_ids = eval_model(model,
+                                                                                      dev_data,
+                                                                                      metric_meta=task_def.metric_meta,
+                                                                                      use_cuda=args.cuda,
+                                                                                      label_mapper=label_dict,
+                                                                                      task_type=task_def.task_type)
                 for key, val in dev_metrics.items():
                     if args.tensorboard:
                         tensorboard.add_scalar('dev/{}/{}'.format(dataset, key), val, global_step=epoch)
@@ -359,11 +369,12 @@ def main():
             test_data = test_data_list[idx]
             if test_data is not None:
                 with torch.no_grad():
-                    test_metrics, test_predictions, scores, golds, test_ids= eval_model(model, test_data,
-                                                                                        metric_meta=task_def.metric_meta,
-                                                                                        use_cuda=args.cuda, with_label=False,
-                                                                                        label_mapper=label_dict,
-                                                                                        task_type=task_def.task_type)
+                    test_metrics, test_predictions, scores, golds, test_ids = eval_model(model, test_data,
+                                                                                         metric_meta=task_def.metric_meta,
+                                                                                         use_cuda=args.cuda,
+                                                                                         with_label=False,
+                                                                                         label_mapper=label_dict,
+                                                                                         task_type=task_def.task_type)
                 score_file = os.path.join(output_dir, '{}_test_scores_{}.json'.format(dataset, epoch))
                 results = {'metrics': test_metrics, 'predictions': test_predictions, 'uids': test_ids, 'scores': scores}
                 dump(score_file, results)
@@ -381,5 +392,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-

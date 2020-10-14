@@ -1,12 +1,15 @@
 import os
 import argparse
 from sys import path
+
 path.append(os.getcwd())
 from data_utils.task_def import DataFormat
 from data_utils.log_wrapper import create_logger
 from experiments.ner.ner_utils import load_conll_chunk, load_conll_ner, load_conll_pos
 from experiments.common_utils import dump_rows
+
 logger = create_logger(__name__, to_disk=True, log_file='bert_ner_data_proc_512_cased.log')
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Preprocessing English NER dataset.')
@@ -15,6 +18,7 @@ def parse_args():
     parser.add_argument('--output_dir', type=str, required=True)
     args = parser.parse_args()
     return args
+
 
 def main(args):
     data_dir = args.data_dir
@@ -74,6 +78,7 @@ def main(args):
     dump_rows(chunk_dev_data, dev_fout, DataFormat.Seqence)
     dump_rows(chunk_test_data, test_fout, DataFormat.Seqence)
     logger.info('done with chunk')
+
 
 if __name__ == '__main__':
     args = parse_args()

@@ -16,7 +16,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Preprocessing GLUE/SNLI/SciTail dataset.')
     parser.add_argument('--seed', type=int, default=13)
     parser.add_argument('--root_dir', type=str, default='data')
-    parser.add_argument('--old_glue', action='store_true', help='whether it is old GLUE, refer official GLUE webpage for details')
+    parser.add_argument('--old_glue', action='store_true',
+                        help='whether it is old GLUE, refer official GLUE webpage for details')
     args = parser.parse_args()
     return args
 
@@ -280,6 +281,7 @@ def main(args):
     dump_rows(stsb_dev_data, stsb_dev_fout, DataFormat.PremiseAndOneHypothesis)
     dump_rows(stsb_test_data, stsb_test_fout, DataFormat.PremiseAndOneHypothesis)
     logger.info('done with stsb')
+
 
 if __name__ == '__main__':
     args = parse_args()

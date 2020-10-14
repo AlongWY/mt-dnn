@@ -6,18 +6,19 @@ from torch.nn.modules.loss import _Loss
 import torch.nn.functional as F
 from enum import IntEnum
 
+
 def stable_kl(logit, target, epsilon=1e-6, reduce=True):
     logit = logit.view(-1, logit.size(-1)).float()
     target = target.view(-1, target.size(-1)).float()
     bs = logit.size(0)
     p = F.log_softmax(logit, 1).exp()
     y = F.log_softmax(target, 1).exp()
-    rp = -(1.0/(p + epsilon) -1 + epsilon).detach().log()
-    ry = -(1.0/(y + epsilon) -1 + epsilon).detach().log()
+    rp = -(1.0 / (p + epsilon) - 1 + epsilon).detach().log()
+    ry = -(1.0 / (y + epsilon) - 1 + epsilon).detach().log()
     if reduce:
-        return (p* (rp- ry) * 2).sum() / bs
+        return (p * (rp - ry) * 2).sum() / bs
     else:
-        return (p* (rp- ry) * 2).sum()
+        return (p * (rp - ry) * 2).sum()
 
 
 class Criterion(_Loss):
@@ -32,6 +33,7 @@ class Criterion(_Loss):
         """weight: sample weight
         """
         return
+
 
 class CeCriterion(Criterion):
     def __init__(self, alpha=1.0, name='Cross Entropy Criterion'):
@@ -49,6 +51,7 @@ class CeCriterion(Criterion):
         loss = loss * self.alpha
         return loss
 
+
 class SeqCeCriterion(CeCriterion):
     def __init__(self, alpha=1.0, name='Seq Cross Entropy Criterion'):
         super().__init__(alpha, name)
@@ -62,6 +65,7 @@ class SeqCeCriterion(CeCriterion):
         loss = loss * self.alpha
         return loss
 
+
 class MseCriterion(Criterion):
     def __init__(self, alpha=1.0, name='MSE Regression Criterion'):
         super().__init__()
@@ -72,12 +76,13 @@ class MseCriterion(Criterion):
         """weight: sample weight
         """
         if weight:
-            loss = torch.mean(F.mse_loss(input.squeeze(), target, reduce=False) * 
+            loss = torch.mean(F.mse_loss(input.squeeze(), target, reduce=False) *
                               weight.reshape((target.shape[0], 1)))
         else:
             loss = F.mse_loss(input.squeeze(), target)
         loss = loss * self.alpha
         return loss
+
 
 class KlCriterion(Criterion):
     def __init__(self, alpha=1.0, name='KL Div Criterion'):
@@ -90,9 +95,11 @@ class KlCriterion(Criterion):
         """
         input = input.float()
         target = target.float()
-        loss = F.kl_div(F.log_softmax(input, dim=-1, dtype=torch.float32), F.softmax(target, dim=-1, dtype=torch.float32), reduction='batchmean')
+        loss = F.kl_div(F.log_softmax(input, dim=-1, dtype=torch.float32),
+                        F.softmax(target, dim=-1, dtype=torch.float32), reduction='batchmean')
         loss = loss * self.alpha
         return loss
+
 
 class NsKlCriterion(Criterion):
     def __init__(self, alpha=1.0, name='KL Div Criterion'):
@@ -105,7 +112,7 @@ class NsKlCriterion(Criterion):
         """
         input = input.float()
         target = target.float()
-        loss = stable_kl(input, target.detach()) 
+        loss = stable_kl(input, target.detach())
         loss = loss * self.alpha
         return loss
 
@@ -121,10 +128,13 @@ class SymKlCriterion(Criterion):
         """
         input = input.float()
         target = target.float()
-        loss = F.kl_div(F.log_softmax(input, dim=-1, dtype=torch.float32), F.softmax(target.detach(), dim=-1, dtype=torch.float32), reduction='batchmean') + \
-            F.kl_div(F.log_softmax(target, dim=-1, dtype=torch.float32), F.softmax(input.detach(), dim=-1, dtype=torch.float32), reduction='batchmean')
+        loss = F.kl_div(F.log_softmax(input, dim=-1, dtype=torch.float32),
+                        F.softmax(target.detach(), dim=-1, dtype=torch.float32), reduction='batchmean') + \
+               F.kl_div(F.log_softmax(target, dim=-1, dtype=torch.float32),
+                        F.softmax(input.detach(), dim=-1, dtype=torch.float32), reduction='batchmean')
         loss = loss * self.alpha
         return loss
+
 
 class NsSymKlCriterion(Criterion):
     def __init__(self, alpha=1.0, name='KL Div Criterion'):
@@ -138,10 +148,9 @@ class NsSymKlCriterion(Criterion):
         input = input.float()
         target = target.float()
         loss = stable_kl(input, target.detach()) + \
-                stable_kl(target, input.detach())
+               stable_kl(target, input.detach())
         loss = loss * self.alpha
         return loss
-
 
 
 class RankCeCriterion(Criterion):
@@ -159,6 +168,7 @@ class RankCeCriterion(Criterion):
             loss = F.cross_entropy(input, target, ignore_index=ignore_index)
         loss = loss * self.alpha
         return loss
+
 
 class SpanCeCriterion(Criterion):
     def __init__(self, alpha=1.0, name='Span Cross Entropy Criterion'):
@@ -183,6 +193,7 @@ class SpanCeCriterion(Criterion):
         loss = 0.5 * (b + e) * self.alpha
         return loss
 
+
 class MlmCriterion(Criterion):
     def __init__(self, alpha=1.0, name='BERT pre-train Criterion'):
         super().__init__()
@@ -202,6 +213,7 @@ class MlmCriterion(Criterion):
         loss = loss * self.alpha
         return loss
 
+
 class LossCriterion(IntEnum):
     CeCriterion = 0
     MseCriterion = 1
@@ -214,15 +226,16 @@ class LossCriterion(IntEnum):
     NsKlCriterion = 8
     NsSymKlCriterion = 9
 
+
 LOSS_REGISTRY = {
-     LossCriterion.CeCriterion: CeCriterion,
-     LossCriterion.MseCriterion: MseCriterion,
-     LossCriterion.RankCeCriterion: RankCeCriterion,
-     LossCriterion.SpanCeCriterion: SpanCeCriterion,
-     LossCriterion.SeqCeCriterion: SeqCeCriterion,
-     LossCriterion.MlmCriterion: MlmCriterion,
-     LossCriterion.KlCriterion: KlCriterion,
-     LossCriterion.SymKlCriterion: SymKlCriterion,
-     LossCriterion.NsKlCriterion: NsKlCriterion,
-     LossCriterion.NsSymKlCriterion: NsSymKlCriterion
+    LossCriterion.CeCriterion: CeCriterion,
+    LossCriterion.MseCriterion: MseCriterion,
+    LossCriterion.RankCeCriterion: RankCeCriterion,
+    LossCriterion.SpanCeCriterion: SpanCeCriterion,
+    LossCriterion.SeqCeCriterion: SeqCeCriterion,
+    LossCriterion.MlmCriterion: MlmCriterion,
+    LossCriterion.KlCriterion: KlCriterion,
+    LossCriterion.SymKlCriterion: SymKlCriterion,
+    LossCriterion.NsKlCriterion: NsKlCriterion,
+    LossCriterion.NsSymKlCriterion: NsSymKlCriterion
 }

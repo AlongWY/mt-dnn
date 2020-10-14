@@ -6,7 +6,7 @@ import os
 import argparse
 import torch
 import json
-from pytorch_pretrained_bert.tokenization import BertTokenizer
+from transformers import BertTokenizer
 from torch.utils.data import DataLoader
 from data_utils.log_wrapper import create_logger
 from data_utils.utils import set_environment
@@ -143,10 +143,10 @@ def train_config(parser):
     parser.add_argument('--bert_l2norm', type=float, default=0.0)
     parser.add_argument('--scheduler_type', type=str, default='ms', help='ms/rop/exp')
     parser.add_argument('--output_dir', default='checkpoint')
-    parser.add_argument('--seed', type=int, default=2018, 
+    parser.add_argument('--seed', type=int, default=2018,
                         help='random seed for data shuffling, embedding init, etc.')
     parser.add_argument('--encoder_type', type=int, default=EncoderModelType.BERT)
-    #fp 16
+    # fp 16
     parser.add_argument('--fp16', action='store_true',
                         help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit")
     parser.add_argument('--fp16_opt_level', type=str, default='O1',
@@ -159,11 +159,11 @@ def set_config(parser):
     parser.add_argument("--finput", default=None, type=str, required=True)
     parser.add_argument("--foutput", default=None, type=str, required=True)
     parser.add_argument("--bert_model", default=None, type=str, required=True,
-        help='Bert model: bert-base-uncased')
-    parser.add_argument( "--checkpoint", default=None, type=str, required=True,
-        help='model parameters')
-    parser.add_argument( "--do_lower_case", action='store_true',
-        help="Set this flag if you are using an uncased model.")
+                        help='Bert model: bert-base-uncased')
+    parser.add_argument("--checkpoint", default=None, type=str, required=True,
+                        help='model parameters')
+    parser.add_argument("--do_lower_case", action='store_true',
+                        help="Set this flag if you are using an uncased model.")
     parser.add_argument("--layers", default="10,11", type=str)
     parser.add_argument("--max_seq_length", default=512, type=int, help='')
     parser.add_argument("--batch_size", default=4, type=int)
@@ -184,10 +184,12 @@ def process_data(args):
             tokenizer=tokenizer)
     return tokened_data, is_single_sentence
 
+
 def dump_data(data, path):
     with open(path, 'w', encoding='utf-8') as writer:
         for sample in data:
             writer.write('{}\n'.format(json.dumps(sample)))
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -234,7 +236,7 @@ def main():
         embeddings = [all_encoder_layers[idx].detach().cpu().numpy()
                       for idx in layer_indexes]
 
-        #import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         uids = batch_meta['uids']
         masks = batch_data[batch_meta['mask']].detach().cpu().numpy().tolist()
         for idx, uid in enumerate(uids):

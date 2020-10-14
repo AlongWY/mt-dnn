@@ -3,6 +3,7 @@ import logging
 from time import gmtime, strftime
 import sys
 
+
 def create_logger(name, silent=False, to_disk=False, log_file=None):
     """Logger wrapper
     """

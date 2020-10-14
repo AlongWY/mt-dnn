@@ -1,6 +1,8 @@
 # Copyright (c) Microsoft. All rights reserved.
 
 from enum import IntEnum
+
+
 class TaskType(IntEnum):
     Classification = 1
     Regression = 2
@@ -9,6 +11,7 @@ class TaskType(IntEnum):
     SeqenceLabeling = 5
     MaskLM = 6
 
+
 class DataFormat(IntEnum):
     PremiseOnly = 1
     PremiseAndOneHypothesis = 2
@@ -16,6 +19,7 @@ class DataFormat(IntEnum):
     MRC = 4
     Seqence = 5
     MLM = 6
+
 
 class EncoderModelType(IntEnum):
     BERT = 1

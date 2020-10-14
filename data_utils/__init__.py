@@ -4,6 +4,7 @@ import numpy as np
 from data_utils.task_def import TaskType, DataFormat
 import tasks
 
+
 def load_data(file_path, task_def):
     data_format = task_def.data_type
     task_type = task_def.task_type
@@ -29,7 +30,7 @@ def load_data(file_path, task_def):
             row = {"uid": fields[0], "ruid": fields[1].split(","), "label": fields[2], "premise": fields[3],
                    "hypothesis": fields[4:]}
         elif data_format == DataFormat.Seqence:
-            row = {"uid": fields[0], "label": eval(fields[1]),  "premise": eval(fields[2])}
+            row = {"uid": fields[0], "label": eval(fields[1]), "premise": eval(fields[2])}
 
         elif data_format == DataFormat.MRC:
             row = {
@@ -60,6 +61,7 @@ def load_data(file_path, task_def):
         rows.append(row)
     return rows
 
+
 def load_score_file(score_path, n_class):
     sample_id_2_pred_score_seg_dic = {}
     score_obj = json.loads(open(score_path, encoding="utf-8").read())
@@ -68,7 +70,7 @@ def load_score_file(score_path, n_class):
         "scores column size should equal to sample count or multiple of sample count (for classification problem)"
 
     scores = score_obj["scores"]
-    score_segs = [scores[i * n_class: (i+1) * n_class] for i in range(len(score_obj["uids"]))]
+    score_segs = [scores[i * n_class: (i + 1) * n_class] for i in range(len(score_obj["uids"]))]
     for sample_id, pred, score_seg in zip(score_obj["uids"], score_obj["predictions"], score_segs):
         sample_id_2_pred_score_seg_dic[sample_id] = (pred, score_seg)
     return sample_id_2_pred_score_seg_dic

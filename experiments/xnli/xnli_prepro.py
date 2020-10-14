@@ -11,6 +11,7 @@ from experiments.glue.glue_utils import *
 
 logger = create_logger(__name__, to_disk=True, log_file='xnli_prepro.log')
 
+
 def load_xnli(file, header=True):
     rows = []
     cnt = 0
@@ -23,11 +24,13 @@ def load_xnli(file, header=True):
             if blocks[1] == '-': continue
             lab = blocks[1]
             if lab is None:
-                import pdb; pdb.set_trace()
+                import pdb;
+                pdb.set_trace()
             sample = {'uid': blocks[9], 'premise': blocks[6], 'hypothesis': blocks[7], 'label': lab, 'lang': blocks[0]}
             rows.append(sample)
             cnt += 1
     return rows
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Preprocessing XNLI dataset.')
@@ -68,6 +71,7 @@ def main(args):
     dump_rows(xnli_dev_data, xnli_dev_fout, DataFormat.PremiseAndOneHypothesis)
     dump_rows(xnli_test_data, xnli_test_fout, DataFormat.PremiseAndOneHypothesis)
     logger.info('done with XNLI')
+
 
 if __name__ == '__main__':
     args = parse_args()

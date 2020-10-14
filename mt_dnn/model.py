@@ -1,6 +1,8 @@
 # coding=utf-8
 # Copyright (c) Microsoft. All rights reserved.
 import sys
+from typing import List
+
 import torch
 import tasks
 import logging
@@ -10,7 +12,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import *
 from data_utils.utils import AverageMeter
-from pytorch_pretrained_bert import BertAdam as Adam
+from mt_dnn.optimization import BertAdam as Adam
 from module.bert_optim import Adamax, RAdam
 from mt_dnn.loss import LOSS_REGISTRY
 from mt_dnn.matcher import SANBertNetwork
@@ -44,21 +46,21 @@ class MTDNNModel(object):
         self._setup_adv_lossmap(self.config)
         self._setup_adv_training(self.config)
 
-
     def _setup_adv_training(self, config):
         self.adv_teacher = None
         if config.get('adv_train', False):
-            self.adv_teacher = SmartPerturbation(config['adv_epsilon'],
-                    config['multi_gpu_on'],
-                    config['adv_step_size'],
-                    config['adv_noise_var'],
-                    config['adv_p_norm'],
-                    config['adv_k'],
-                    config['fp16'],
-                    config['encoder_type'],
-                    loss_map=self.adv_task_loss_criterion,
-                    norm_level=config['adv_norm_level'])
-
+            self.adv_teacher = SmartPerturbation(
+                config['adv_epsilon'],
+                config['multi_gpu_on'],
+                config['adv_step_size'],
+                config['adv_noise_var'],
+                config['adv_p_norm'],
+                config['adv_k'],
+                config['fp16'],
+                config['encoder_type'],
+                loss_map=self.adv_task_loss_criterion,
+                norm_level=config['adv_norm_level']
+            )
 
     def _get_param_groups(self):
         no_decay = ['bias', 'gamma', 'beta', 'LayerNorm.bias', 'LayerNorm.weight']
@@ -86,13 +88,13 @@ class MTDNNModel(object):
             if self.config.get('have_lr_scheduler', False): self.config['have_lr_scheduler'] = False
         elif self.config['optimizer'] == 'radam':
             self.optimizer = RAdam(optimizer_parameters,
-                                    self.config['learning_rate'],
-                                    warmup=self.config['warmup'],
-                                    t_total=num_train_step,
-                                    max_grad_norm=self.config['grad_clipping'],
-                                    schedule=self.config['warmup_schedule'],
-                                    eps=self.config['adam_eps'],
-                                    weight_decay=self.config['weight_decay'])
+                                   self.config['learning_rate'],
+                                   warmup=self.config['warmup'],
+                                   t_total=num_train_step,
+                                   max_grad_norm=self.config['grad_clipping'],
+                                   schedule=self.config['warmup_schedule'],
+                                   eps=self.config['adam_eps'],
+                                   weight_decay=self.config['weight_decay'])
             if self.config.get('have_lr_scheduler', False): self.config['have_lr_scheduler'] = False
             # The current radam does not support FP16.
             self.config['fp16'] = False
@@ -106,7 +108,7 @@ class MTDNNModel(object):
                                   weight_decay=self.config['weight_decay'])
             if self.config.get('have_lr_scheduler', False): self.config['have_lr_scheduler'] = False
         else:
-            raise RuntimeError('Unsupported optimizer: %s' % opt['optimizer'])
+            raise RuntimeError('Unsupported optimizer: %s' % self.config['optimizer'])
 
         if state_dict and 'optimizer' in state_dict:
             self.optimizer.load_state_dict(state_dict['optimizer'])
@@ -123,7 +125,8 @@ class MTDNNModel(object):
 
         if self.config.get('have_lr_scheduler', False):
             if self.config.get('scheduler_type', 'rop') == 'rop':
-                self.scheduler = ReduceLROnPlateau(self.optimizer, mode='max', factor=self.config['lr_gamma'], patience=3)
+                self.scheduler = ReduceLROnPlateau(self.optimizer, mode='max', factor=self.config['lr_gamma'],
+                                                   patience=3)
             elif self.config.get('scheduler_type', 'rop') == 'exp':
                 self.scheduler = ExponentialLR(self.optimizer, gamma=self.config.get('lr_gamma', 0.95))
             else:
@@ -159,7 +162,6 @@ class MTDNNModel(object):
                 assert cs is not None
                 lc = LOSS_REGISTRY[cs](name='Adv Loss func of task {}: {}'.format(idx, cs))
                 self.adv_task_loss_criterion.append(lc)
-
 
     def _to_cuda(self, tensor):
         if tensor is None: return tensor
@@ -200,7 +202,8 @@ class MTDNNModel(object):
             loss_criterion = self.task_loss_criterion[task_id]
             if isinstance(loss_criterion, RankCeCriterion) and batch_meta['pairwise_size'] > 1:
                 # reshape the logits for ranking.
-                loss = self.task_loss_criterion[task_id](logits, y, weight, ignore_index=-1, pairwise_size=batch_meta['pairwise_size'])
+                loss = self.task_loss_criterion[task_id](logits, y, weight, ignore_index=-1,
+                                                         pairwise_size=batch_meta['pairwise_size'])
             else:
                 loss = self.task_loss_criterion[task_id](logits, y, weight, ignore_index=-1)
 
@@ -236,7 +239,7 @@ class MTDNNModel(object):
                                                    self.config['global_grad_clipping'])
                 else:
                     torch.nn.utils.clip_grad_norm_(self.network.parameters(),
-                                                  self.config['global_grad_clipping'])
+                                                   self.config['global_grad_clipping'])
             self.updates += 1
             # reset number of the grad accumulation
             self.optimizer.step()
@@ -301,7 +304,9 @@ class MTDNNModel(object):
             predictions = []
             if self.config['encoder_type'] == EncoderModelType.BERT:
                 import experiments.squad.squad_utils as mrc_utils
-                scores, predictions = mrc_utils.extract_answer(batch_meta, batch_data, start, end, self.config.get('max_answer_len', 5), do_lower_case=self.config.get('do_lower_case', False))
+                scores, predictions = mrc_utils.extract_answer(batch_meta, batch_data, start, end,
+                                                               self.config.get('max_answer_len', 5),
+                                                               do_lower_case=self.config.get('do_lower_case', False))
             return scores, predictions, batch_meta['answer']
         else:
             raise ValueError("Unknown task_type: %s" % task_type)

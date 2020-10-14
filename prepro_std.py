@@ -13,7 +13,6 @@ from experiments.exp_def import TaskDefs, EncoderModelType
 from experiments.squad import squad_utils
 from pretrained_models import *
 
-
 DEBUG_MODE = False
 MAX_SEQ_LEN = 512
 DOC_STRIDE = 180
@@ -25,10 +24,12 @@ logger = create_logger(
     to_disk=True,
     log_file='mt_dnn_data_proc_{}.log'.format(MAX_SEQ_LEN))
 
-def feature_extractor(tokenizer, text_a, text_b=None, max_length=512, model_type=None, enable_padding=False, pad_on_left=False,
-                                      pad_token=0,
-                                      pad_token_segment_id=0,
-                                      mask_padding_with_zero=False): # set mask_padding_with_zero default value as False to keep consistent with original setting
+
+def feature_extractor(tokenizer, text_a, text_b=None, max_length=512, model_type=None, enable_padding=False,
+                      pad_on_left=False,
+                      pad_token=0,
+                      pad_token_segment_id=0,
+                      mask_padding_with_zero=False):  # set mask_padding_with_zero default value as False to keep consistent with original setting
     inputs = tokenizer.encode_plus(
         text_a,
         text_b,
@@ -56,16 +57,19 @@ def feature_extractor(tokenizer, text_a, text_b=None, max_length=512, model_type
             token_type_ids = token_type_ids + ([pad_token_segment_id] * padding_length)
 
         assert len(input_ids) == max_length, "Error with input length {} vs {}".format(len(input_ids), max_length)
-        assert len(attention_mask) == max_length, "Error with input length {} vs {}".format(len(attention_mask), max_length)
-        assert len(token_type_ids) == max_length, "Error with input length {} vs {}".format(len(token_type_ids), max_length)
+        assert len(attention_mask) == max_length, "Error with input length {} vs {}".format(len(attention_mask),
+                                                                                            max_length)
+        assert len(token_type_ids) == max_length, "Error with input length {} vs {}".format(len(token_type_ids),
+                                                                                            max_length)
 
     if model_type.lower() in ['bert', 'roberta']:
         attention_mask = None
 
-    if model_type.lower() not in ['distilbert','bert', 'xlnet'] :
+    if model_type.lower() not in ['distilbert', 'bert', 'xlnet']:
         token_type_ids = [0] * len(token_type_ids)
 
-    return input_ids,attention_mask, token_type_ids # input_ids, input_mask, segment_id
+    return input_ids, attention_mask, token_type_ids  # input_ids, input_mask, segment_id
+
 
 def build_data(data, dump_path, tokenizer, data_format=DataFormat.PremiseOnly,
                max_seq_len=MAX_SEQ_LEN, encoderModelType=EncoderModelType.BERT, lab_dict=None):
@@ -78,7 +82,8 @@ def build_data(data, dump_path, tokenizer, data_format=DataFormat.PremiseOnly,
                 ids = sample['uid']
                 premise = sample['premise']
                 label = sample['label']
-                input_ids, input_mask, type_ids = feature_extractor(tokenizer, premise, max_length=max_seq_len, model_type=encoderModelType.name)
+                input_ids, input_mask, type_ids = feature_extractor(tokenizer, premise, max_length=max_seq_len,
+                                                                    model_type=encoderModelType.name)
                 features = {
                     'uid': ids,
                     'label': label,
@@ -96,7 +101,8 @@ def build_data(data, dump_path, tokenizer, data_format=DataFormat.PremiseOnly,
                 premise = sample['premise']
                 hypothesis = sample['hypothesis']
                 label = sample['label']
-                input_ids, input_mask, type_ids = feature_extractor(tokenizer, premise, text_b=hypothesis, max_length=max_seq_len,
+                input_ids, input_mask, type_ids = feature_extractor(tokenizer, premise, text_b=hypothesis,
+                                                                    max_length=max_seq_len,
                                                                     model_type=encoderModelType.name)
                 features = {
                     'uid': ids,
@@ -119,8 +125,8 @@ def build_data(data, dump_path, tokenizer, data_format=DataFormat.PremiseOnly,
                 type_ids_list = []
                 for hypothesis in hypothesis_list:
                     input_ids, mask, type_ids = feature_extractor(tokenizer,
-                                                                        premise, hypothesis, max_length=max_seq_len,
-                                                                        model_type=encoderModelType.name)
+                                                                  premise, hypothesis, max_length=max_seq_len,
+                                                                  model_type=encoderModelType.name)
                     input_ids_list.append(input_ids)
                     type_ids_list.append(type_ids)
                 features = {
@@ -132,7 +138,8 @@ def build_data(data, dump_path, tokenizer, data_format=DataFormat.PremiseOnly,
                     'olabel': sample['olabel']}
                 writer.write('{}\n'.format(json.dumps(features)))
 
-    def build_data_sequence(data, dump_path, max_seq_len=MAX_SEQ_LEN, tokenizer=None, encoderModelType=EncoderModelType.BERT, label_mapper=None):
+    def build_data_sequence(data, dump_path, max_seq_len=MAX_SEQ_LEN, tokenizer=None,
+                            encoderModelType=EncoderModelType.BERT, label_mapper=None):
         with open(dump_path, 'w', encoding='utf-8') as writer:
             for idx, sample in enumerate(data):
                 ids = sample['uid']
@@ -147,7 +154,7 @@ def build_data(data, dump_path, tokenizer, data_format=DataFormat.PremiseOnly,
                             labels.append(sample['label'][i])
                         else:
                             labels.append(label_mapper['X'])
-                if len(premise) >  max_seq_len - 2:
+                if len(premise) > max_seq_len - 2:
                     tokens = tokens[:max_seq_len - 2]
                     labels = labels[:max_seq_len - 2]
 
@@ -158,9 +165,10 @@ def build_data(data, dump_path, tokenizer, data_format=DataFormat.PremiseOnly,
                 features = {'uid': ids, 'label': label, 'token_id': input_ids, 'type_id': type_ids}
                 writer.write('{}\n'.format(json.dumps(features)))
 
-    def build_data_mrc(data, dump_path, max_seq_len=MRC_MAX_SEQ_LEN, tokenizer=None, label_mapper=None, is_training=True):
+    def build_data_mrc(data, dump_path, max_seq_len=MRC_MAX_SEQ_LEN, tokenizer=None, label_mapper=None,
+                       is_training=True):
         with open(dump_path, 'w', encoding='utf-8') as writer:
-            unique_id = 1000000000 # TODO: this is from BERT, needed to remove it...
+            unique_id = 1000000000  # TODO: this is from BERT, needed to remove it...
             for example_index, sample in enumerate(data):
                 ids = sample['uid']
                 doc = sample['premise']
@@ -175,37 +183,36 @@ def build_data(data, dump_path, tokenizer, data_format=DataFormat.PremiseOnly,
                 TODO --xiaodl: support RoBERTa
                 """
                 feature_list = squad_utils.mrc_feature(tokenizer,
-                                        unique_id,
-                                        example_index,
-                                        query,
-                                        doc_tokens,
-                                        answer_start_adjusted,
-                                        answer_end_adjusted,
-                                        is_impossible,
-                                        max_seq_len,
-                                        MAX_QUERY_LEN,
-                                        DOC_STRIDE,
-                                        answer_text=answer,
-                                        is_training=True)
+                                                       unique_id,
+                                                       example_index,
+                                                       query,
+                                                       doc_tokens,
+                                                       answer_start_adjusted,
+                                                       answer_end_adjusted,
+                                                       is_impossible,
+                                                       max_seq_len,
+                                                       MAX_QUERY_LEN,
+                                                       DOC_STRIDE,
+                                                       answer_text=answer,
+                                                       is_training=True)
                 unique_id += len(feature_list)
                 for feature in feature_list:
                     so = json.dumps({'uid': ids,
-                                'token_id' : feature.input_ids,
-                                'mask': feature.input_mask,
-                                'type_id': feature.segment_ids,
-                                'example_index': feature.example_index,
-                                'doc_span_index':feature.doc_span_index,
-                                'tokens': feature.tokens,
-                                'token_to_orig_map': feature.token_to_orig_map,
-                                'token_is_max_context': feature.token_is_max_context,
-                                'start_position': feature.start_position,
-                                'end_position': feature.end_position,
-                                'label': feature.is_impossible,
-                                'doc': doc,
-                                'doc_offset': feature.doc_offset,
-                                'answer': [answer]})
+                                     'token_id': feature.input_ids,
+                                     'mask': feature.input_mask,
+                                     'type_id': feature.segment_ids,
+                                     'example_index': feature.example_index,
+                                     'doc_span_index': feature.doc_span_index,
+                                     'tokens': feature.tokens,
+                                     'token_to_orig_map': feature.token_to_orig_map,
+                                     'token_is_max_context': feature.token_is_max_context,
+                                     'start_position': feature.start_position,
+                                     'end_position': feature.end_position,
+                                     'label': feature.is_impossible,
+                                     'doc': doc,
+                                     'doc_offset': feature.doc_offset,
+                                     'answer': [answer]})
                     writer.write('{}\n'.format(so))
-
 
     if data_format == DataFormat.PremiseOnly:
         build_data_premise_only(

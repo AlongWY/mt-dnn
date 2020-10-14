@@ -3,8 +3,8 @@ cola:
   dropout_p: 0.05
   enable_san: false
   metric_meta:
-  - ACC
-  - MCC
+    - ACC
+    - MCC
   loss: CeCriterion
   kd_loss: MseCriterion
   adv_loss: SymKlCriterion
@@ -13,30 +13,30 @@ cola:
 mnli:
   data_format: PremiseAndOneHypothesis
   dropout_p: 0.1
-  enable_san: false 
+  enable_san: false
   labels:
-  - contradiction
-  - neutral
-  - entailment
+    - contradiction
+    - neutral
+    - entailment
   metric_meta:
-  - ACC
+    - ACC
   loss: CeCriterion
   kd_loss: MseCriterion
   adv_loss: SymKlCriterion
   n_class: 3
   split_names:
-  - train
-  - matched_dev
-  - mismatched_dev
-  - matched_test
-  - mismatched_test
+    - train
+    - matched_dev
+    - mismatched_dev
+    - matched_test
+    - mismatched_test
   task_type: Classification
 mrpc:
   data_format: PremiseAndOneHypothesis
-  enable_san: false 
+  enable_san: false
   metric_meta:
-  - ACC
-  - F1
+    - ACC
+    - F1
   loss: CeCriterion
   kd_loss: MseCriterion
   adv_loss: SymKlCriterion
@@ -44,12 +44,12 @@ mrpc:
   task_type: Classification
 qnli:
   data_format: PremiseAndOneHypothesis
-  enable_san: false 
+  enable_san: false
   labels:
-  - not_entailment
-  - entailment
+    - not_entailment
+    - entailment
   metric_meta:
-  - ACC
+    - ACC
   loss: CeCriterion
   kd_loss: MseCriterion
   adv_loss: SymKlCriterion
@@ -57,10 +57,10 @@ qnli:
   task_type: Classification
 qqp:
   data_format: PremiseAndOneHypothesis
-  enable_san: false 
+  enable_san: false
   metric_meta:
-  - ACC
-  - F1
+    - ACC
+    - F1
   loss: CeCriterion
   kd_loss: MseCriterion
   adv_loss: SymKlCriterion
@@ -70,10 +70,10 @@ rte:
   data_format: PremiseAndOneHypothesis
   enable_san: false
   labels:
-  - not_entailment
-  - entailment
+    - not_entailment
+    - entailment
   metric_meta:
-  - ACC
+    - ACC
   loss: CeCriterion
   kd_loss: MseCriterion
   adv_loss: SymKlCriterion
@@ -83,10 +83,10 @@ scitail:
   data_format: PremiseAndOneHypothesis
   enable_san: false
   labels:
-  - neutral
-  - entails
+    - neutral
+    - entails
   metric_meta:
-  - ACC
+    - ACC
   loss: CeCriterion
   kd_loss: MseCriterion
   adv_loss: SymKlCriterion
@@ -96,11 +96,11 @@ snli:
   data_format: PremiseAndOneHypothesis
   enable_san: false
   labels:
-  - contradiction
-  - neutral
-  - entailment
+    - contradiction
+    - neutral
+    - entailment
   metric_meta:
-  - ACC
+    - ACC
   loss: CeCriterion
   kd_loss: MseCriterion
   adv_loss: SymKlCriterion
@@ -110,7 +110,7 @@ sst:
   data_format: PremiseOnly
   enable_san: false
   metric_meta:
-  - ACC
+    - ACC
   loss: CeCriterion
   kd_loss: MseCriterion
   adv_loss: SymKlCriterion
@@ -120,8 +120,8 @@ stsb:
   data_format: PremiseAndOneHypothesis
   enable_san: false
   metric_meta:
-  - Pearson
-  - Spearman
+    - Pearson
+    - Spearman
   n_class: 1
   loss: MseCriterion
   kd_loss: MseCriterion
@@ -129,9 +129,9 @@ stsb:
   task_type: Regression
 wnli:
   data_format: PremiseAndOneHypothesis
-  enable_san: false 
+  enable_san: false
   metric_meta:
-  - ACC
+    - ACC
   loss: CeCriterion
   kd_loss: MseCriterion
   adv_loss: SymKlCriterion

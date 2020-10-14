@@ -30,6 +30,7 @@ def generate_golds_predictions_scores(sample_id_2_pred_score_seg_dic, sample_obj
         scores.extend(score_seg)
     return golds, predictions, scores
 
+
 args = parser.parse_args()
 
 task_def_path = args.task_def

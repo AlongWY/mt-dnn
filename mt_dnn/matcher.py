@@ -4,15 +4,14 @@ import os
 import torch
 import torch.nn as nn
 from pretrained_models import MODEL_CLASSES
-from transformers import BertConfig
 
 from module.dropout_wrapper import DropoutWrapper
 from module.san import SANClassifier, MaskLmHeader
-from module.san_model import SanModel
 from torch.nn.modules.normalization import LayerNorm
 from data_utils.task_def import EncoderModelType, TaskType
 import tasks
 from experiments.exp_def import TaskDef
+
 
 class LinearPooler(nn.Module):
     def __init__(self, hidden_size):
@@ -26,11 +25,13 @@ class LinearPooler(nn.Module):
         pooled_output = self.activation(pooled_output)
         return pooled_output
 
+
 def generate_decoder_opt(enable_san, max_opt):
     opt_v = 0
     if enable_san and max_opt < 2:
         opt_v = max_opt
     return opt_v
+
 
 class SANBertNetwork(nn.Module):
     def __init__(self, opt, bert_config=None, initial_from_local=False):
@@ -45,7 +46,7 @@ class SANBertNetwork(nn.Module):
         literal_encoder_type = EncoderModelType(self.encoder_type).name.lower()
         config_class, model_class, tokenizer_class = MODEL_CLASSES[literal_encoder_type]
         self.preloaded_config = config_class.from_dict(opt)  # load config from opt
-        self.preloaded_config.output_hidden_states = True # return all hidden states
+        self.preloaded_config.output_hidden_states = True  # return all hidden states
         self.bert = model_class(self.preloaded_config)
         hidden_size = self.bert.config.hidden_size
 
@@ -77,7 +78,9 @@ class SANBertNetwork(nn.Module):
             self.dropout_list.append(dropout)
             task_obj = tasks.get_task_obj(task_def)
             if task_obj is not None:
-                out_proj = task_obj.train_build_task_layer(decoder_opt, hidden_size, lab, opt, prefix='answer', dropout=dropout)
+                out_proj = task_obj.train_build_task_layer(
+                    decoder_opt, hidden_size, lab, opt, prefix='answer', dropout=dropout
+                )
             elif task_type == TaskType.Span:
                 assert decoder_opt != 1
                 out_proj = nn.Linear(hidden_size, 2)
@@ -116,8 +119,8 @@ class SANBertNetwork(nn.Module):
             if isinstance(module, nn.Linear):
                 if module.bias is not None:
                     module.bias.data.zero_()
-        self.apply(init_weights)
 
+        self.apply(init_weights)
 
     def embed_encode(self, input_ids, token_type_ids=None, attention_mask=None):
         # support BERT now
@@ -126,10 +129,9 @@ class SANBertNetwork(nn.Module):
         embedding_output = self.bert.embeddings(input_ids, token_type_ids)
         return embedding_output
 
-
     def encode(self, input_ids, token_type_ids, attention_mask):
         outputs = self.bert(input_ids=input_ids, token_type_ids=token_type_ids,
-                                                          attention_mask=attention_mask)
+                            attention_mask=attention_mask)
         # all hidden states: outputs[1]
         sequence_output = outputs[0]
         pooled_output = outputs[1]
@@ -163,7 +165,8 @@ class SANBertNetwork(nn.Module):
         # positions we want to attend and -10000.0 for masked positions.
         # Since we are adding it to the raw scores before the softmax, this is
         # effectively the same as removing these entirely.
-        extended_attention_mask = extended_attention_mask.to(dtype=next(self.bert.parameters()).dtype)  # fp16 compatibility
+        extended_attention_mask = extended_attention_mask.to(
+            dtype=next(self.bert.parameters()).dtype)  # fp16 compatibility
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
 
         # If a 2D ou 3D attention mask is provided for the cross-attention
@@ -177,12 +180,12 @@ class SANBertNetwork(nn.Module):
         # and head_mask is converted to shape [num_hidden_layers x batch x num_heads x seq_length x seq_length]
         head_mask = [None] * self.bert.config.num_hidden_layers
 
-        #head_mask = self.bert.get_head_mask(head_mask, self.bert.config.num_hidden_layers)
+        # head_mask = self.bert.get_head_mask(head_mask, self.bert.config.num_hidden_layers)
         # We can provide a self-attention mask of dimensions [batch_size, from_seq_length, to_seq_length]
         # ourselves in which case we just need to make it broadcastable to all heads.
-        #extended_attention_mask = self.bert.get_extended_attention_mask(
+        # extended_attention_mask = self.bert.get_extended_attention_mask(
         #    attention_mask, input_shape, device
-        #)
+        # )
         encoder_outputs = self.bert.encoder(
             embed,
             attention_mask=extended_attention_mask,
@@ -195,10 +198,11 @@ class SANBertNetwork(nn.Module):
         outputs = sequence_output, pooled_output
         return outputs
 
-    def forward(self, input_ids, token_type_ids, attention_mask, premise_mask=None, hyp_mask=None, task_id=0, fwd_type=0, embed=None):
+    def forward(self, input_ids, token_type_ids, attention_mask, premise_mask=None, hyp_mask=None, task_id=0,
+                fwd_type=0, embed=None):
         if fwd_type == 2:
             assert embed is not None
-            sequence_output, pooled_output = self.embed_forward(embed, attention_mask) 
+            sequence_output, pooled_output = self.embed_forward(embed, attention_mask)
         elif fwd_type == 1:
             return self.embed_encode(input_ids, token_type_ids, attention_mask)
         else:
@@ -207,7 +211,8 @@ class SANBertNetwork(nn.Module):
         task_type = self.task_types[task_id]
         task_obj = tasks.get_task_obj(self.task_def_list[task_id])
         if task_obj is not None:
-            logits = task_obj.train_forward(sequence_output, pooled_output, premise_mask, hyp_mask, decoder_opt, self.dropout_list[task_id], self.scoring_list[task_id])
+            logits = task_obj.train_forward(sequence_output, pooled_output, premise_mask, hyp_mask, decoder_opt,
+                                            self.dropout_list[task_id], self.scoring_list[task_id])
             return logits
         elif task_type == TaskType.Span:
             assert decoder_opt != 1
