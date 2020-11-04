@@ -7,7 +7,6 @@
 RoBERTa: A Robustly Optimized BERT Pretraining Approach.
 """
 
-              
 import logging
 import torch
 import torch.nn as nn
@@ -30,13 +29,14 @@ from .hub_interface import RobertaHubInterface
 
 logger = logging.getLogger(__name__)
 
+
 @register_model('advbert')
 class AdvbertModel(FairseqLanguageModel):
 
     @classmethod
     def hub_models(cls):
         return {
-            'roberta.base': 'http://dl.fbaipublicfiles.com/fairseq/models/roberta.base.tar.gz',
+            'roberta.base': 'http://dl.fbaipublicfiles.com/fairseq/models/xlmr.base.v0.tar.gz',
             'roberta.large': 'http://dl.fbaipublicfiles.com/fairseq/models/roberta.large.tar.gz',
             'roberta.large.mnli': 'http://dl.fbaipublicfiles.com/fairseq/models/roberta.large.mnli.tar.gz',
             'roberta.large.wsc': 'http://dl.fbaipublicfiles.com/fairseq/models/roberta.large.wsc.tar.gz',
@@ -86,7 +86,7 @@ class AdvbertModel(FairseqLanguageModel):
         parser.add_argument('--encoder-layerdrop', type=float, metavar='D', default=0,
                             help='LayerDrop probability for encoder')
         parser.add_argument('--encoder-layers-to-keep', default=None,
-                            help='which layers to *keep* when pruning as a comma-separated list')                                                                                      
+                            help='which layers to *keep* when pruning as a comma-separated list')
 
     @classmethod
     def build_model(cls, args, task):
@@ -101,7 +101,8 @@ class AdvbertModel(FairseqLanguageModel):
         encoder = RobertaEncoder(args, task.source_dictionary)
         return cls(args, encoder)
 
-    def forward(self, src_tokens, features_only=False, return_all_hiddens=True, classification_head_name=None, **kwargs):
+    def forward(self, src_tokens, features_only=False, return_all_hiddens=True, classification_head_name=None,
+                **kwargs):
         if classification_head_name is not None:
             features_only = True
 
@@ -128,7 +129,7 @@ class AdvbertModel(FairseqLanguageModel):
             inner_dim or self.args.encoder_embed_dim,
             num_classes,
             self.args.pooler_activation_fn,
-            self.args.pooler_dropout,      
+            self.args.pooler_dropout,
         )
 
     @property
@@ -136,7 +137,8 @@ class AdvbertModel(FairseqLanguageModel):
         return {'self'}
 
     @classmethod
-    def from_pretrained(cls, model_name_or_path, checkpoint_file='model.pt', data_name_or_path='.', bpe='gpt2', **kwargs):
+    def from_pretrained(cls, model_name_or_path, checkpoint_file='model.pt', data_name_or_path='.', bpe='gpt2',
+                        **kwargs):
         from fairseq import hub_utils
         x = hub_utils.from_pretrained(
             model_name_or_path,
@@ -177,8 +179,8 @@ class AdvbertModel(FairseqLanguageModel):
                     )
                     keys_to_delete.append(k)
                 elif (
-                    num_classes != self.classification_heads[head_name].out_proj.out_features
-                    or inner_dim != self.classification_heads[head_name].dense.out_features
+                        num_classes != self.classification_heads[head_name].out_proj.out_features
+                        or inner_dim != self.classification_heads[head_name].dense.out_features
                 ):
                     logger.warning(
                         'deleting classification head ({}) from checkpoint '
@@ -196,7 +198,6 @@ class AdvbertModel(FairseqLanguageModel):
                 if prefix + 'classification_heads.' + k not in state_dict:
                     logger.info('Overwriting ' + prefix + 'classification_heads.' + k)
                     state_dict[prefix + 'classification_heads.' + k] = v
-
 
 
 class RobertaLMHead(nn.Module):
@@ -281,7 +282,7 @@ class RobertaEncoder(FairseqDecoder):
             num_segments=0,
             encoder_normalize_before=True,
             apply_bert_init=True,
-            activation_fn=args.activation_fn,  
+            activation_fn=args.activation_fn,
         )
 
         self.lm_head = RobertaLMHead(
@@ -291,7 +292,8 @@ class RobertaEncoder(FairseqDecoder):
             weight=self.sentence_encoder.embed_tokens.weight,
         )
 
-    def forward(self, src_tokens, features_only=False, return_all_hiddens=True, masked_tokens=None, embed=None, player=-1, **unused):
+    def forward(self, src_tokens, features_only=False, return_all_hiddens=True, masked_tokens=None, embed=None,
+                player=-1, **unused):
         """
         Args:
             src_tokens (LongTensor): input tokens of shape `(batch, src_len)`
@@ -310,7 +312,7 @@ class RobertaEncoder(FairseqDecoder):
         """
         padding_mask = src_tokens.eq(self.padding_idx)
         if player > -1:
-            x, extra = self.embed_forward(embed, padding_mask, player) 
+            x, extra = self.embed_forward(embed, padding_mask)
             if not features_only:
                 x = self.output_layer(x, masked_tokens=masked_tokens)
             return x, extra
@@ -336,16 +338,15 @@ class RobertaEncoder(FairseqDecoder):
         return self.args.max_positions
 
     def embed_forward(self, embed, padding_mask):
-        encoder = self.sentence_encoder # TransformerSentenceEncoder
+        encoder = self.sentence_encoder  # TransformerSentenceEncoder
         x = embed
-        reps = []
+        reps = [embed]
         layers = encoder.layers
         for layer in layers:
             x, _ = layer(x, self_attn_padding_mask=padding_mask)
             # B x T x C -> T x B x C
             reps.append(x)
         return x.transpose(0, 1), {'inner_states': reps}
-
 
 
 @register_model_architecture('advbert', 'advbert')

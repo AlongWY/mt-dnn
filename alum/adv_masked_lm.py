@@ -12,21 +12,24 @@ import torch.nn.functional as F
 from fairseq import utils
 from fairseq.criterions import FairseqCriterion, register_criterion
 
+
 def KL(input, target, reduction="sum"):
     input = input.float()
     target = target.float()
-    loss = F.kl_div(F.log_softmax(input, dim=-1, dtype=torch.float32), F.softmax(target, dim=-1, dtype=torch.float32), reduction=reduction)
+    loss = F.kl_div(F.log_softmax(input, dim=-1, dtype=torch.float32), F.softmax(target, dim=-1, dtype=torch.float32),
+                    reduction=reduction)
     return loss
+
 
 def SKL(logit, target, epsilon=1e-8):
     logit = logit.view(-1, logit.size(-1)).float()
     target = target.view(-1, target.size(-1)).float()
-    #bs = logit.size(0)
+    # bs = logit.size(0)
     p = F.log_softmax(logit, 1).exp()
     y = F.log_softmax(target, 1).exp()
-    rp = -(1.0/(p + epsilon) -1 + epsilon).detach().log()
-    ry = -(1.0/(y + epsilon) -1 + epsilon).detach().log()
-    return (p* (rp- ry) * 2).sum()
+    rp = -(1.0 / (p + epsilon) - 1 + epsilon).detach().log()
+    ry = -(1.0 / (y + epsilon) - 1 + epsilon).detach().log()
+    return (p * (rp - ry) * 2).sum()
 
 
 @register_criterion('adv_masked_lm')
@@ -116,7 +119,15 @@ class AdvMaskedLmLoss(FairseqCriterion):
             'ntokens': sample['ntokens'],
             'nsentences': sample['nsentences'],
             'sample_size': sample_size,
+
         }
+
+        log_loss = (utils.item(loss.data) if reduce else loss.data) / sample_size / math.log(2)
+        log_adv_loss = adv_loss / sample_size / math.log(2)
+        log_mlm_loss = log_loss - log_adv_loss
+
+        # debug_output = self.aggregate_logging_outputs(logging_output)
+
         return loss, sample_size, logging_output
 
     @staticmethod
@@ -129,10 +140,10 @@ class AdvMaskedLmLoss(FairseqCriterion):
 
         agg_output = {
             'loss': loss / sample_size / math.log(2),
-            'nll_loss': sum(log.get('nll_loss', 0) for log in logging_outputs) / sample_size / math.log(2) if ntokens > 0 else 0.,
+            'nll_loss': sum(log.get('nll_loss', 0) for log in logging_outputs) / sample_size / math.log(
+                2) if ntokens > 0 else 0.,
             'ntokens': ntokens,
             'nsentences': nsentences,
             'sample_size': sample_size,
         }
         return agg_output
-

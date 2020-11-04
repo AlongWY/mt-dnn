@@ -6,6 +6,7 @@
 
 import os
 
+import torch
 import numpy as np
 
 from fairseq.data import (
@@ -57,7 +58,7 @@ class AdvMaskedLMTask(FairseqTask):
                             help='mask whole words; you may also want to set --bpe')
 
         ## ALUM args
-        parser.add_argument('--adv_opt', default=0, type=int, help="1: adv training")
+        parser.add_argument('--adv_opt', default=1, type=int, help="1: adv training")
         parser.add_argument('--prob_n_layer', default=0, type=int)
         parser.add_argument('--adv_step_size', default=1e-3, type=float,
                             help="1 (default), perturbation size for adversarial training.")
@@ -65,8 +66,9 @@ class AdvMaskedLMTask(FairseqTask):
                             help="1 (default), trade off parameter for adversarial training.")
 
         parser.add_argument('--noise_var', default=1e-5, type=float)
-        parser.add_argument('--noise_gamma', default=1e-6, type=float, help="1e-4 (default), eps for adversarial copy training.")
-        parser.add_argument('--project_norm_type', default='inf', type=str) 
+        parser.add_argument('--noise_gamma', default=1e-6, type=float,
+                            help="1e-4 (default), eps for adversarial copy training.")
+        parser.add_argument('--project_norm_type', default='inf', type=str)
 
     def __init__(self, args, dictionary):
         super().__init__(args)
@@ -246,4 +248,3 @@ class AdvMaskedLMTask(FairseqTask):
         loss, sample_size, logging_output = criterion(model, sample)
         optimizer.backward(loss)
         return loss, sample_size, logging_output
-
